@@ -44,7 +44,6 @@ static func create(
 	bolt.rng = from_rng
 	bolt.position = from
 	bolt.direction = dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
-	bolt._build_visual()
 	return bolt
 
 
@@ -94,19 +93,28 @@ func _resolve_hit(enemy: Enemy) -> void:
 	hit_resolved.emit(amount, is_crit, enemy.position)
 
 
-## Draws the bolt, once.
-func _build_visual() -> void:
+## Draws the bolt pointing along its direction of travel. In local space +x is
+## forward, which is where step() puts it with [member Node2D.rotation].
+##
+## An arrow, not a dart: a dark shaft reads against the pale grass where a pale
+## one vanishes at this size, and the fletching tells the player which way it is
+## going even when the head is already inside an enemy.
+func _draw() -> void:
 	var colour := Color(0.72, 0.74, 0.78)
 	if weapon != null:
 		colour = weapon.color
 
-	var shaft := Polygon2D.new()
-	shaft.polygon = PackedVector2Array([
-		Vector2(-LENGTH * 0.5, -1.6),
-		Vector2(LENGTH * 0.2, -1.6),
+	var back := -LENGTH * 0.5
+	InkStyle.detail(self, Vector2(back + 1.0, 0.0), Vector2(LENGTH * 0.16, 0.0), 2.0, ActorArt.WOOD)
+	InkStyle.detail(
+		self, Vector2(back + 2.0, 0.0), Vector2(back + 6.5, -3.0), 1.4, ActorArt.BONE
+	)
+	InkStyle.detail(
+		self, Vector2(back + 2.0, 0.0), Vector2(back + 6.5, 3.0), 1.4, ActorArt.BONE
+	)
+
+	InkStyle.outlined(self, PackedVector2Array([
+		Vector2(1.0, -2.6),
 		Vector2(LENGTH * 0.5, 0.0),
-		Vector2(LENGTH * 0.2, 1.6),
-		Vector2(-LENGTH * 0.5, 1.6),
-	])
-	shaft.color = colour
-	add_child(shaft)
+		Vector2(1.0, 2.6),
+	]), colour, 1.2)

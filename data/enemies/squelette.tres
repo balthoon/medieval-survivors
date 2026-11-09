@@ -5,10 +5,11 @@
 [resource]
 script = ExtResource("1_script")
 display_name = "Squelette"
+art = "skeleton"
 max_hp = 20
 move_speed = 70.0
 radius = 13.0
-color = Color(0.75, 0.2, 0.14, 1)
+color = Color(0.851, 0.812, 0.702, 1)
 xp_value = 1
 contact_damage = 8.0
 spawn_weight = 1.0

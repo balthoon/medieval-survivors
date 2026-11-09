@@ -5,6 +5,7 @@
 [resource]
 script = ExtResource("1_script")
 display_name = "Seigneur squelette"
+art = "boss"
 max_hp = 480
 move_speed = 42.0
 radius = 30.0

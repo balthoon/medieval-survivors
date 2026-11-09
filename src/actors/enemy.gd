@@ -19,13 +19,10 @@ const CRIT_FLASH := Color(0.95, 0.78, 0.25)
 ## Distance an enemy is pushed away from the attacker on each hit.
 const KNOCKBACK_DISTANCE := 28.0
 
-## Ink rim drawn around every enemy, in pixels. On a grassy floor the body colour
-## of the wolf is close to the lawn, so the rim is what keeps the silhouette
-## readable; it must never flash with the body.
-const RIM_WIDTH := 2.0
-
-## Colour of the rim. Same ink as the rest of the game.
-const RIM_COLOR := Color(0.16, 0.14, 0.12)
+## Alpha of the white wash drawn over the body for the length of a hit flash.
+## High enough to read at 0.08 s, low enough that the creature's silhouette
+## survives the flash instead of becoming a blob.
+const FLASH_ALPHA := 0.62
 
 ## Colour of the ground-slam telegraph. Danger red, translucent: it must be
 ## unmistakable over green grass without hiding the enemies behind it.
@@ -60,9 +57,8 @@ var slam_radius: float = 0.0
 ## Seconds until this enemy may deal contact damage again.
 var contact_cooldown: float = 0.0
 
-## The diamond drawn for this enemy, recoloured during a hit flash.
-var _visual: Polygon2D = null
-## Seconds left in the current hit flash.
+## Seconds left in the current hit flash. The body is drawn in [method _draw],
+## so a flash is a redraw rather than a material or a colour swap.
 var _flash_time: float = 0.0
 ## Colour the current flash set; the archetype colour returns when it ends.
 var _flash_color: Color = HIT_FLASH
@@ -92,37 +88,31 @@ static func create(
 	enemy.slam_damage = enemy_data.slam_damage * damage_scale
 	enemy.slam_radius = enemy_data.slam_radius
 
-	# Added before the rim so the disc is painted under the body and the rim.
+	# The disc is a child painted behind the parent's own drawing, so it stays
+	# under the creature. Painted in front, it would bury the boss it warns about.
 	if enemy_data.slam_damage > 0.0 and enemy_data.slam_radius > 0.0:
 		var telegraph := Polygon2D.new()
 		telegraph.polygon = _circle(enemy_data.slam_radius)
 		telegraph.color = TELEGRAPH_COLOR
 		telegraph.modulate.a = TELEGRAPH_MIN_ALPHA
 		telegraph.visible = false
+		telegraph.show_behind_parent = true
 		enemy.add_child(telegraph)
 		enemy._telegraph = telegraph
 
-	var rim := Polygon2D.new()
-	rim.polygon = _diamond(enemy_data.radius + RIM_WIDTH)
-	rim.color = RIM_COLOR
-	enemy.add_child(rim)
-
-	var visual := Polygon2D.new()
-	visual.polygon = _diamond(enemy_data.radius)
-	visual.color = enemy_data.color
-	enemy.add_child(visual)
-	enemy._visual = visual
 	return enemy
 
 
-## Builds the diamond body of one enemy at the given radius.
-static func _diamond(radius: float) -> PackedVector2Array:
-	return PackedVector2Array([
-		Vector2(0.0, -radius),
-		Vector2(radius, 0.0),
-		Vector2(0.0, radius),
-		Vector2(-radius, 0.0),
-	])
+## Draws the creature. Enemies never animate, so this runs once at creation and
+## again only around a hit flash — a field of sixty enemies costs sixty draws
+## total, not sixty per frame.
+func _draw() -> void:
+	if data == null:
+		return
+	var flash := Color(0.0, 0.0, 0.0, 0.0)
+	if _flash_time > 0.0:
+		flash = Color(_flash_color.r, _flash_color.g, _flash_color.b, FLASH_ALPHA)
+	ActorArt.draw_creature(self, data.art, radius, data.color, flash)
 
 
 ## Builds a circle polygon of the given radius, used by the slam telegraph.
@@ -226,7 +216,7 @@ func _strike() -> void:
 	slam_struck.emit(position, slam_radius, slam_damage)
 
 
-## Applies damage and flashes the visual — gold on a crit, white otherwise.
+## Applies damage and flashes the body — gold on a crit, white otherwise.
 ## Returns true when this hit was the one that killed the enemy.
 func take_damage(amount: float, is_crit: bool = false) -> bool:
 	if hp <= 0.0:
@@ -234,16 +224,15 @@ func take_damage(amount: float, is_crit: bool = false) -> bool:
 	hp = maxf(hp - amount, 0.0)
 	_flash_time = FLASH_DURATION
 	_flash_color = CRIT_FLASH if is_crit else HIT_FLASH
-	if _visual != null:
-		_visual.color = _flash_color
+	queue_redraw()
 	return hp <= 0.0
 
 
-## Advances the hit flash back to the archetype colour. Called every frame by the
+## Advances the hit flash and repaints once it is over. Called every frame by the
 ## enemy manager.
 func step_visual(delta: float) -> void:
 	if _flash_time <= 0.0:
 		return
 	_flash_time = maxf(_flash_time - delta, 0.0)
-	if _flash_time <= 0.0 and _visual != null and data != null:
-		_visual.color = data.color
+	if _flash_time <= 0.0:
+		queue_redraw()

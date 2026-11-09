@@ -82,6 +82,7 @@ var _elapsed := 0.0
 @onready var _boss_bar: Control = $BossBar
 @onready var _boss_name: Label = $BossBar/BossName
 @onready var _boss_fill: ColorRect = $BossBar/BossBarFill
+@onready var _frame: HudFrame = $Frame
 
 
 func _ready() -> void:
@@ -207,6 +208,7 @@ func show_boss(display_name: String) -> void:
 	_boss_name.text = display_name.to_upper()
 	_boss_name.visible = true
 	_boss_bar.visible = true
+	_frame.set_boss_visible(true)
 	update_boss(1.0, 1.0)
 
 
@@ -223,6 +225,8 @@ func update_boss(hp: float, hp_max: float) -> void:
 ## run start.
 func hide_boss() -> void:
 	_boss_bar.visible = false
+	if _frame != null:
+		_frame.set_boss_visible(false)
 
 
 ## Flashes the whole screen red. The fade runs in _process, panel open or not.

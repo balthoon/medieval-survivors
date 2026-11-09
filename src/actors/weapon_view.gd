@@ -1,6 +1,10 @@
 ## The drawn half of one melee weapon: a blade or a hammer on a pivot, plus the
 ## fading ink fan showing the arc that was actually struck.
 ##
+## The weapon itself is drawn in the same hand as the actors — ink rim, three
+## tones, light from the top-left — see `design/art/art-bible.md`. It is drawn
+## in local space pointing along +x, so the pivot's rotation aims it.
+##
 ## One view per equipped melee weapon, added as a child of the player node. It
 ## never reads game state: WeaponSystem tells it where to point and when to swing.
 class_name WeaponView
@@ -105,67 +109,111 @@ func _build() -> void:
 	_pivot = Node2D.new()
 	add_child(_pivot)
 
-	var colour := INK
-	if weapon != null:
-		colour = weapon.color
-
-	if weapon != null and weapon.shape == "hammer":
-		_build_hammer(_pivot, colour)
-	else:
-		_build_blade(_pivot, colour)
+	var head := Head.new()
+	head.reach = _draw_reach
+	head.colour = weapon.color if weapon != null else INK
+	head.shape = weapon.shape if weapon != null else "blade"
+	_pivot.add_child(head)
 
 
-## Long tapered blade, scaled to the drawn reach.
-func _build_blade(pivot: Node2D, colour: Color) -> void:
-	var reach := _draw_reach
-	var outline := Polygon2D.new()
-	outline.polygon = PackedVector2Array([
-		Vector2(reach * 0.22, -3.0),
-		Vector2(reach * 0.94, -2.2),
-		Vector2(reach, 0.0),
-		Vector2(reach * 0.94, 2.2),
-		Vector2(reach * 0.22, 3.0),
-	])
-	outline.color = INK
-	pivot.add_child(outline)
+## One melee weapon, drawn in ink and pointing along +x.
+##
+## A node of its own rather than a pile of [Polygon2D]s: an ink rim, a highlight
+## band and a detail line are strokes, not fills, and every actor in the game is
+## built the same way. It reads nothing — [WeaponView] hands it its three values
+## once in `setup()`.
+class Head extends Node2D:
+	## "blade" or "hammer", from [member WeaponData.shape].
+	var shape: String = "blade"
+	## Distance from the pivot to the end of the weapon, in pixels.
+	var reach: float = 48.0
+	## The weapon's own colour: the blade's steel, or the hammer's head.
+	var colour: Color = Color(0.72, 0.74, 0.78)
 
-	var blade := Polygon2D.new()
-	blade.polygon = PackedVector2Array([
-		Vector2(reach * 0.24, -2.2),
-		Vector2(reach * 0.94, -1.4),
-		Vector2(reach * 0.97, 0.0),
-		Vector2(reach * 0.94, 1.4),
-		Vector2(reach * 0.24, 2.2),
-	])
-	blade.color = colour
-	pivot.add_child(blade)
+	func _draw() -> void:
+		if shape == "hammer":
+			_draw_hammer()
+		else:
+			_draw_blade()
 
 
-## Short handle with a heavy head at the end, scaled to the drawn reach.
-func _build_hammer(pivot: Node2D, colour: Color) -> void:
-	var reach := _draw_reach
-	var head_start := maxf(reach - 18.0, reach * 0.6)
+	## An axis-aligned rectangle from [param x0] to [param x1], [param half] tall.
+	static func _rect(x0: float, x1: float, half: float) -> PackedVector2Array:
+		return PackedVector2Array([
+			Vector2(x0, -half), Vector2(x1, -half), Vector2(x1, half), Vector2(x0, half),
+		])
 
-	var shaft := Polygon2D.new()
-	shaft.polygon = PackedVector2Array([
-		Vector2(reach * 0.18, -2.0),
-		Vector2(head_start, -2.0),
-		Vector2(head_start, 2.0),
-		Vector2(reach * 0.18, 2.0),
-	])
-	shaft.color = INK
-	pivot.add_child(shaft)
 
-	var head := Polygon2D.new()
-	head.polygon = PackedVector2Array([
-		Vector2(head_start, -8.0),
-		Vector2(reach, -8.0),
-		Vector2(reach + 3.0, 0.0),
-		Vector2(reach, 8.0),
-		Vector2(head_start, 8.0),
-	])
-	head.color = colour
-	pivot.add_child(head)
+	## A tapered blade with a grip, a crossguard and a fuller down the middle.
+	## The guard is the one perpendicular stroke on the whole weapon: without it
+	## a blade is a stick, however well it is tapered.
+	func _draw_blade() -> void:
+		var r := reach
+		var leather := InkStyle.dark_of(ActorArt.WOOD, 0.28)
+		InkStyle.outlined(self, _rect(0.10 * r, 0.26 * r, 1.7), leather, 1.2)
+
+		var guard_half := clampf(0.10 * r, 3.2, 6.0)
+		InkStyle.outlined(
+			self, _rect(0.24 * r, 0.30 * r, guard_half), InkStyle.dark_of(colour, 0.20), 1.4
+		)
+
+		var blade := PackedVector2Array([
+			Vector2(0.28 * r, -2.6),
+			Vector2(0.86 * r, -2.0),
+			Vector2(r, 0.0),
+			Vector2(0.86 * r, 2.0),
+			Vector2(0.28 * r, 2.6),
+		])
+		InkStyle.outlined(self, blade, colour, 1.6)
+
+		# Light along the upper edge, shade along the lower one, ink fuller
+		# between them: three tones on a 5 px blade, which is all it takes.
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(0.29 * r, -2.0),
+			Vector2(0.87 * r, -1.4),
+			Vector2(r - 1.6, 0.0),
+			Vector2(0.87 * r, -0.3),
+			Vector2(0.29 * r, -0.6),
+		]), InkStyle.light_of(colour, 0.34))
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(0.29 * r, 2.0),
+			Vector2(0.87 * r, 1.4),
+			Vector2(r - 1.6, 0.0),
+			Vector2(0.87 * r, 0.3),
+			Vector2(0.29 * r, 0.6),
+		]), InkStyle.dark_of(colour, 0.24))
+		InkStyle.detail(self, Vector2(0.36 * r, 0.0), Vector2(0.80 * r, 0.0), 1.0)
+
+
+	## A wooden shaft under a heavy block of a head, with a steel band where the
+	## two meet and a lit top face on the block.
+	func _draw_hammer() -> void:
+		var r := reach
+		var head_start := maxf(r - 20.0, r * 0.62)
+
+		InkStyle.outlined(self, _rect(0.08 * r, head_start + 2.0, 1.9), ActorArt.WOOD, 1.4)
+		InkStyle.detail(
+			self, Vector2(head_start - 4.0, -1.9), Vector2(head_start - 4.0, 1.9), 1.2,
+			InkStyle.INK
+		)
+
+		var head := PackedVector2Array([
+			Vector2(head_start, -7.0),
+			Vector2(r + 1.0, -8.0),
+			Vector2(r + 4.0, 0.0),
+			Vector2(r + 1.0, 8.0),
+			Vector2(head_start, 7.0),
+		])
+		InkStyle.outlined(self, head, colour, 2.0)
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(head_start + 1.0, -6.0),
+			Vector2(r + 1.0, -6.8),
+			Vector2(r + 2.8, -0.4),
+			Vector2(head_start + 1.0, -0.4),
+		]), InkStyle.light_of(colour, 0.22))
+		InkStyle.detail(
+			self, Vector2(head_start + 1.0, 1.2), Vector2(r + 2.6, 1.2), 1.0
+		)
 
 
 ## Replaces the trail polygon with a fan swept between two angles.

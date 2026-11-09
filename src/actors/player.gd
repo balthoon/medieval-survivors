@@ -32,23 +32,35 @@ var invulnerable_time: float = 0.0
 
 ## Seconds accumulated within the current invulnerability window, for the blink.
 var _blink_time: float = 0.0
-## The drawn body, hidden and shown to blink. May be null in a bare scene.
-var _body: Node2D = null
+## False on the half-frames the player is blinked out of sight. The body is drawn
+## in [method _draw], so hiding it is a redraw that paints nothing — the weapons
+## are separate nodes and stay visible throughout, as the rules above say.
+var _blink_on: bool = true
+## Seconds since the run started, used only by the breathing offset.
+var _anim_time: float = 0.0
 
 
 func _ready() -> void:
-	_body = get_node_or_null("Body") as Node2D
 	queue_redraw()
 
 
-## Draws the dark ground ring under the body, so the knight sits on the arena
-## instead of floating over it. The parent draws before its children, so this is
-## painted beneath the Body node and the weapon views.
+## Draws the knight. The parent draws before its children, so the body sits under
+## the weapon views without any z-index work.
 func _draw() -> void:
-	draw_circle(Vector2.ZERO, RADIUS + 7.0, Color(0.16, 0.14, 0.12, 0.10))
-	draw_arc(
-		Vector2.ZERO, RADIUS + 4.0, 0.0, TAU, 32, Color(0.16, 0.14, 0.12, 0.35), 2.0, true
-	)
+	if not _blink_on:
+		return
+	ActorArt.draw_knight(self, _view(), RADIUS, InkStyle.breathe(_anim_time))
+
+
+## Which of the four drawn orientations matches the current facing. The
+## comparison is on the dominant component, so the knight does not flicker
+## between views when the aim sweeps diagonally.
+func _view() -> String:
+	var horizontal := cos(facing)
+	var vertical := sin(facing)
+	if absf(horizontal) >= absf(vertical):
+		return "right" if horizontal >= 0.0 else "left"
+	return "front" if vertical >= 0.0 else "back"
 
 
 ## Copies the class stats and resets hp to full. Call once at run start.
@@ -72,17 +84,18 @@ func step_movement(dir: Vector2, delta: float) -> void:
 	)
 
 
-## Advances the invulnerability window and blinks the body while it lasts.
+## Advances the invulnerability window, the breathing offset and the blink.
 ## Display feedback only: the weapons stay visible and the player keeps moving.
 func step(delta: float) -> void:
+	_anim_time += delta
+	queue_redraw()
 	if invulnerable_time <= 0.0:
 		return
 	invulnerable_time = maxf(invulnerable_time - delta, 0.0)
 	_blink_time += delta
-	if _body != null:
-		_body.visible = int(_blink_time * BLINK_HZ) % 2 == 0
-		if invulnerable_time <= 0.0:
-			_body.visible = true
+	_blink_on = int(_blink_time * BLINK_HZ) % 2 == 0
+	if invulnerable_time <= 0.0:
+		_blink_on = true
 
 
 ## Points the player toward a world position.

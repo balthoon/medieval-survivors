@@ -1,11 +1,25 @@
-## Enemy archetype: health, movement, contact damage and spawn weight.
+## Enemy archetype: health, movement, contact damage, spawn weight and look.
 ##
 ## Values live in .tres resources under res://data/enemies/.
 class_name EnemyData
 extends Resource
 
+## Keys understood by [method ActorArt.draw_creature]. The look is data, not a
+## branch in the enemy: a new archetype is a new `.tres` with an art key, and the
+## unknown-key fallback is the plain skeleton.
+##
+## - `skeleton` — narrow and vertical, round skull over a ribcage
+## - `orc` — wide and low, shoulders outside the torso, carries a club
+## - `wolf` — horizontal, cold grey, snout and tail
+## - `boss` — tall, caped, crowned, staff in hand
+const ART_KEYS := ["skeleton", "orc", "wolf", "boss"]
+
 ## Name used by debug output and future UI.
 @export var display_name: String = ""
+## Which drawing [method ActorArt.draw_creature] paints for this archetype. Must
+## be one of [constant ART_KEYS]; the skeleton is drawn for any unknown key, so a
+## typo shows a plain enemy instead of an invisible one.
+@export var art: String = "skeleton"
 ## Maximum hit points.
 @export var max_hp: int = 12
 ## Movement speed in pixels per second.
