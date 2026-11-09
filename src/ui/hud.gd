@@ -331,42 +331,31 @@ func _on_option_pressed(index: int) -> void:
 	upgrade_chosen.emit(index)
 
 
-## Number keys pick a choice, R asks for a reroll. A reroll leaves the panel
-## accepting input: the caller answers with a fresh show_upgrade_choices().
+## Number keys pick a choice, R asks for a reroll. Both are actions defined in
+## `project.godot` (their key events are physical, so the number row works on
+## non-QWERTY layouts). A reroll leaves the panel accepting input: the caller
+## answers with a fresh show_upgrade_choices().
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not _accepting:
 		return
-	var key_event := event as InputEventKey
-	if key_event == null or key_event.echo or not key_event.pressed:
-		return
 
-	var key := _key_for(key_event)
-	if key == KEY_R:
+	if event.is_action_pressed("reroll"):
 		get_viewport().set_input_as_handled()
 		reroll_requested.emit()
 		return
 
 	var index := -1
-	match key:
-		KEY_1:
-			index = 0
-		KEY_2:
-			index = 1
-		KEY_3:
-			index = 2
+	if event.is_action_pressed("choice_1"):
+		index = 0
+	elif event.is_action_pressed("choice_2"):
+		index = 1
+	elif event.is_action_pressed("choice_3"):
+		index = 2
 	if index < 0 or index >= _choice_count:
 		return
 
 	get_viewport().set_input_as_handled()
 	_on_option_pressed(index)
-
-
-## Returns the key that was pressed. Physical position wins so the number row
-## works on non-QWERTY layouts, where keycode reports the shifted symbol.
-func _key_for(event: InputEventKey) -> Key:
-	if event.physical_keycode != KEY_NONE:
-		return event.physical_keycode
-	return event.keycode
 
 
 ## Fades the damage flash linearly to zero, then hides it.

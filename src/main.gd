@@ -139,7 +139,7 @@ func _process(delta: float) -> void:
 	_update_camera(delta)
 
 	if _dead or _won:
-		if Input.is_key_pressed(KEY_R):
+		if Input.is_action_pressed("restart"):
 			get_tree().reload_current_scene()
 		return
 
@@ -184,27 +184,16 @@ func _load_data() -> void:
 	_equipment_pool.assign(catalogue.equipment)
 
 
+## Movement direction for this frame, length at most 1, read from the InputMap
+## rather than from keycodes: the four move actions are defined in
+## `project.godot`, so rebinding them later touches no code. Their key events are
+## *physical*, so WASD means the same four key positions on AZERTY (ZQSD) and
+## QWERTY, and their joypad-axis events carry [member RunConfig.joy_axis_deadzone]
+## as the InputMap deadzone.
 func _read_move_dir() -> Vector2:
-	var dir := Vector2.ZERO
-	# Physical keys, not logical ones: WASD must mean the same four keys on every
-	# layout. On an AZERTY keyboard that is ZQSD; with logical keycodes Q and Z
-	# would stay dead, because the key labelled Q there is where A sits on QWERTY.
-	if Input.is_physical_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
-		dir.x -= 1.0
-	if Input.is_physical_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
-		dir.x += 1.0
-	if Input.is_physical_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
-		dir.y -= 1.0
-	if Input.is_physical_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
-		dir.y += 1.0
-
-	var joy := Vector2(Input.get_joy_axis(0, 0), Input.get_joy_axis(0, 1))
-	if joy.length() > _config.joy_axis_deadzone:
-		dir += joy
-
-	if dir.length() > 1.0:
-		dir = dir.normalized()
-	return dir
+	return Input.get_vector(
+		"move_left", "move_right", "move_up", "move_down", _config.joy_axis_deadzone
+	)
 
 
 ## Aims the player at the nearest living enemy every frame, wherever it stands in
@@ -778,21 +767,13 @@ func _weapon_cooldown_seconds() -> Array[float]:
 	return seconds
 
 
+## The mute shortcut is an action (see `mute` in `project.godot`), so it can be
+## rebound without touching code.
 func _unhandled_key_input(event: InputEvent) -> void:
-	var key_event := event as InputEventKey
-	if key_event == null or key_event.echo or not key_event.pressed:
-		return
-	if _key_of(key_event) != KEY_M or _sfx == null:
+	if _sfx == null or not event.is_action_pressed("mute"):
 		return
 	_sfx.toggle_muted()
 	get_viewport().set_input_as_handled()
-
-
-## Physical key wins, so the shortcut survives non-QWERTY layouts.
-func _key_of(event: InputEventKey) -> Key:
-	if event.physical_keycode != KEY_NONE:
-		return event.physical_keycode
-	return event.keycode
 
 
 func _exit_tree() -> void:

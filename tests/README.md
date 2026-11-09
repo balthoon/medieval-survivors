@@ -36,10 +36,13 @@ supprimés. Correspondance :
 | `verify_slice04.gd` (règles) | `integration/boss_rules_test.gd` | 10 | câblage boss ; cadence toutes les 5 vagues ; paliers de scaling ; télégraphe ; portée du slam ; résistance au recul ; spawner qui ignore le boss ; finish line ; pas de doublon de slot ; plafond d'offres d'armes |
 | `verify_slice04.gd` (combat) | `integration/boss_fight_test.gd` | 3 | apparition d'un unique boss palier 0 + barre ; dégâts du slam dans le rayon seulement ; mort du boss → butin |
 | — | `integration/main_scene_bootstrap_test.gd` | 1 | la scène principale expose `Player` et `EnemyManager` |
+| — | `integration/data_catalogue_test.gd` | 7 | `data/catalogue.tres` énumère tout le contenu (3 ennemis, 1 boss, 4 armes, équipement, améliorations, vagues, classe) et le charge |
+| — | `integration/spawner_unlock_test.gd` | 7 | les déverrouillages pointent sur `EnemyData.id`, jamais sur `display_name` ; renommer l'un ne déverrouille pas l'autre |
 | — | `unit/harness_bootstrap_test.gd` | 1 | le harnais lui-même : découverte, assertion, code de sortie |
 | — | `unit/run_config_test.gd` | 3 | `data/run_config.tres` se charge ; courbe d'XP (5, 4) et paliers de boss (0.9, 0.35) inchangés par W0-E3 |
+| — | `unit/input_map_test.gd` | 6 | les dix actions de run existent ; les lettres sont liées en **physique** (A/D/W/S = ZQSD sur AZERTY) ; axes de manette ; zone morte = `RunConfig.joy_axis_deadzone` ; une touche logique Q ne déclenche pas `move_left` |
 
-**Total : 38 tests, 8 suites.**
+**Total : 58 tests, 11 suites.**
 
 ## Conventions
 
