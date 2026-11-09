@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/equipment_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "anneau_argent"
+display_name = "Anneau d'argent"
+slot = "anneau"
+rarity = "peu_commun"
+stat = "attack_speed"
+amount = 0.08
+description = "+8 % de vitesse d'attaque"

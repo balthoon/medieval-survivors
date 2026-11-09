@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/equipment_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "bottes_cuir"
+display_name = "Bottes de cuir"
+slot = "bottes"
+rarity = "commun"
+stat = "move_speed"
+amount = 0.08
+description = "+8 % de vitesse de déplacement"

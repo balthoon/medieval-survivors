@@ -1,0 +1,13 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/equipment_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "gants_fer"
+display_name = "Gants ferrés"
+slot = "gants"
+rarity = "peu_commun"
+stat = "damage"
+amount = 0.1
+description = "+10 % de dégâts"

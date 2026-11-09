@@ -1,0 +1,20 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+display_name = "Seigneur squelette"
+max_hp = 480
+move_speed = 42.0
+radius = 30.0
+color = Color(0.36, 0.25, 0.42, 1)
+xp_value = 30
+contact_damage = 16.0
+spawn_weight = 0.0
+is_elite = true
+knockback_resistance = 0.85
+slam_damage = 22.0
+slam_radius = 96.0
+slam_telegraph = 0.85
+slam_cooldown = 4.5

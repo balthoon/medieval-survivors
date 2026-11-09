@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/wave_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+duration = 20.0
+base_spawn_interval = 1.4
+interval_decay_per_wave = 0.88
+min_spawn_interval = 0.22
+base_max_alive = 18
+alive_growth_per_wave = 6
+boss_every_waves = 5
+boss_spawn_interval_scale = 1.6

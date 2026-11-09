@@ -1,0 +1,529 @@
+[gd_scene load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://src/main.gd" id="1_main"]
+[ext_resource type="Script" path="res://src/actors/player.gd" id="2_player"]
+[ext_resource type="Script" path="res://src/systems/enemy_manager.gd" id="3_enemy_manager"]
+[ext_resource type="Script" path="res://src/systems/spawner.gd" id="4_spawner"]
+[ext_resource type="Script" path="res://src/ui/hud.gd" id="5_hud"]
+[ext_resource type="Script" path="res://src/systems/weapon_system.gd" id="6_weapon_system"]
+[ext_resource type="Script" path="res://src/systems/fx.gd" id="7_fx"]
+[ext_resource type="Script" path="res://src/systems/sfx.gd" id="8_sfx"]
+[ext_resource type="Script" path="res://src/systems/arena_decor.gd" id="9_arena_decor"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Arena" type="Node2D" parent="."]
+
+[node name="Border" type="Polygon2D" parent="Arena"]
+z_index = -30
+polygon = PackedVector2Array(36, 68, 1244, 68, 1244, 612, 36, 612)
+color = Color(0.16, 0.14, 0.12, 1)
+
+[node name="Floor" type="Polygon2D" parent="Arena"]
+z_index = -20
+polygon = PackedVector2Array(40, 72, 1240, 72, 1240, 608, 40, 608)
+color = Color(0.765, 0.82, 0.608, 1)
+
+[node name="ArenaDecor" type="Node2D" parent="Arena"]
+z_index = -10
+script = ExtResource("9_arena_decor")
+
+[node name="Camera" type="Camera2D" parent="."]
+position = Vector2(640, 360)
+
+[node name="Enemies" type="Node2D" parent="."]
+
+[node name="Pickups" type="Node2D" parent="."]
+
+[node name="Projectiles" type="Node2D" parent="."]
+
+[node name="Player" type="Node2D" parent="."]
+position = Vector2(640, 360)
+script = ExtResource("2_player")
+
+[node name="Body" type="Polygon2D" parent="Player"]
+polygon = PackedVector2Array(-14, -14, 14, -14, 14, 14, -14, 14)
+color = Color(0.16, 0.14, 0.12, 1)
+
+[node name="Fx" type="Node2D" parent="."]
+z_index = 30
+script = ExtResource("7_fx")
+
+[node name="Sfx" type="Node" parent="."]
+script = ExtResource("8_sfx")
+
+[node name="EnemyManager" type="Node" parent="."]
+script = ExtResource("3_enemy_manager")
+
+[node name="Spawner" type="Node" parent="."]
+script = ExtResource("4_spawner")
+
+[node name="WeaponSystem" type="Node" parent="."]
+script = ExtResource("6_weapon_system")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("5_hud")
+
+[node name="HpBarBg" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 12.0
+offset_right = 344.0
+offset_bottom = 36.0
+color = Color(0.16, 0.14, 0.12, 1)
+
+[node name="HpBarFill" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 12.0
+offset_right = 344.0
+offset_bottom = 36.0
+color = Color(0.35, 0.45, 0.62, 1)
+
+[node name="HpLabel" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 12.0
+offset_right = 344.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "VIE 100 / 100"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="XpBarBg" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 42.0
+offset_right = 344.0
+offset_bottom = 52.0
+color = Color(0.16, 0.14, 0.12, 1)
+
+[node name="XpBarFill" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 42.0
+offset_right = 344.0
+offset_bottom = 52.0
+color = Color(0.85, 0.65, 0.15, 1)
+
+[node name="XpLabel" type="Label" parent="HUD"]
+offset_left = 356.0
+offset_top = 36.0
+offset_right = 660.0
+offset_bottom = 58.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "XP 0 / 5 · NIV. 1"
+vertical_alignment = 1
+
+[node name="WaveLabel" type="Label" parent="HUD"]
+offset_left = 880.0
+offset_top = 8.0
+offset_right = 1080.0
+offset_bottom = 32.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 18
+text = "Vague 1"
+horizontal_alignment = 2
+
+[node name="TimerLabel" type="Label" parent="HUD"]
+offset_left = 1088.0
+offset_top = 8.0
+offset_right = 1170.0
+offset_bottom = 32.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 18
+text = "20 s"
+horizontal_alignment = 2
+
+[node name="WaveBarBg" type="ColorRect" parent="HUD"]
+offset_left = 880.0
+offset_top = 38.0
+offset_right = 1256.0
+offset_bottom = 46.0
+color = Color(0.16, 0.14, 0.12, 0.35)
+
+[node name="WaveBarFill" type="ColorRect" parent="HUD"]
+offset_left = 880.0
+offset_top = 38.0
+offset_right = 1256.0
+offset_bottom = 46.0
+color = Color(0.35, 0.45, 0.62, 1)
+
+[node name="DeathLabel" type="Label" parent="HUD"]
+visible = false
+offset_left = 340.0
+offset_top = 300.0
+offset_right = 940.0
+offset_bottom = 360.0
+theme_override_colors/font_color = Color(0.75, 0.2, 0.14, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 30
+text = "MORT — R pour recommencer"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="WaveBanner" type="Label" parent="HUD"]
+visible = false
+offset_left = 340.0
+offset_top = 236.0
+offset_right = 940.0
+offset_bottom = 312.0
+theme_override_colors/font_color = Color(0.72, 0.52, 0.08, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 44
+text = "VAGUE 1"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DamageFlash" type="ColorRect" parent="HUD"]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.75, 0.12, 0.1, 0)
+
+[node name="LowHpTop" type="ColorRect" parent="HUD"]
+offset_right = 1280.0
+offset_bottom = 6.0
+mouse_filter = 2
+color = Color(0.75, 0.2, 0.14, 0)
+
+[node name="LowHpBottom" type="ColorRect" parent="HUD"]
+offset_top = 714.0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.75, 0.2, 0.14, 0)
+
+[node name="LowHpLeft" type="ColorRect" parent="HUD"]
+offset_right = 6.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.75, 0.2, 0.14, 0)
+
+[node name="LowHpRight" type="ColorRect" parent="HUD"]
+offset_left = 1274.0
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.75, 0.2, 0.14, 0)
+
+[node name="Weapon0Label" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 612.0
+offset_right = 460.0
+offset_bottom = 632.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "-"
+
+[node name="Weapon0Status" type="Label" parent="HUD"]
+offset_left = 460.0
+offset_top = 612.0
+offset_right = 600.0
+offset_bottom = 632.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+
+[node name="Weapon0Bg" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 634.0
+offset_right = 600.0
+offset_bottom = 638.0
+color = Color(0.16, 0.14, 0.12, 0.35)
+
+[node name="Weapon0Fill" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 634.0
+offset_right = 600.0
+offset_bottom = 638.0
+color = Color(0.35, 0.45, 0.62, 1)
+
+[node name="Weapon1Label" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 642.0
+offset_right = 460.0
+offset_bottom = 662.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "-"
+
+[node name="Weapon1Status" type="Label" parent="HUD"]
+offset_left = 460.0
+offset_top = 642.0
+offset_right = 600.0
+offset_bottom = 662.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+
+[node name="Weapon1Bg" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 664.0
+offset_right = 600.0
+offset_bottom = 668.0
+color = Color(0.16, 0.14, 0.12, 0.35)
+
+[node name="Weapon1Fill" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 664.0
+offset_right = 600.0
+offset_bottom = 668.0
+color = Color(0.35, 0.45, 0.62, 1)
+
+[node name="Weapon2Label" type="Label" parent="HUD"]
+offset_left = 24.0
+offset_top = 672.0
+offset_right = 460.0
+offset_bottom = 692.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 16
+text = "-"
+
+[node name="Weapon2Status" type="Label" parent="HUD"]
+offset_left = 460.0
+offset_top = 672.0
+offset_right = 600.0
+offset_bottom = 692.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+horizontal_alignment = 2
+
+[node name="Weapon2Bg" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 694.0
+offset_right = 600.0
+offset_bottom = 698.0
+color = Color(0.16, 0.14, 0.12, 0.35)
+
+[node name="Weapon2Fill" type="ColorRect" parent="HUD"]
+offset_left = 24.0
+offset_top = 694.0
+offset_right = 600.0
+offset_bottom = 698.0
+color = Color(0.35, 0.45, 0.62, 1)
+
+[node name="Equip0" type="Label" parent="HUD"]
+offset_left = 640.0
+offset_top = 612.0
+offset_right = 940.0
+offset_bottom = 634.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "-"
+
+[node name="Equip1" type="Label" parent="HUD"]
+offset_left = 640.0
+offset_top = 642.0
+offset_right = 940.0
+offset_bottom = 664.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "-"
+
+[node name="Equip2" type="Label" parent="HUD"]
+offset_left = 640.0
+offset_top = 672.0
+offset_right = 940.0
+offset_bottom = 694.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "-"
+
+[node name="Equip3" type="Label" parent="HUD"]
+offset_left = 950.0
+offset_top = 612.0
+offset_right = 1256.0
+offset_bottom = 634.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "-"
+
+[node name="Equip4" type="Label" parent="HUD"]
+offset_left = 950.0
+offset_top = 642.0
+offset_right = 1256.0
+offset_bottom = 664.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "-"
+
+[node name="Equip5" type="Label" parent="HUD"]
+offset_left = 950.0
+offset_top = 672.0
+offset_right = 1256.0
+offset_bottom = 694.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+text = "-"
+
+[node name="BossBar" type="Control" parent="HUD"]
+visible = false
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+
+[node name="BossBarBg" type="ColorRect" parent="HUD/BossBar"]
+offset_left = 360.0
+offset_top = 72.0
+offset_right = 920.0
+offset_bottom = 96.0
+color = Color(0.16, 0.14, 0.12, 1)
+
+[node name="BossBarFill" type="ColorRect" parent="HUD/BossBar"]
+offset_left = 360.0
+offset_top = 72.0
+offset_right = 920.0
+offset_bottom = 96.0
+color = Color(0.62, 0.22, 0.24, 1)
+
+[node name="BossName" type="Label" parent="HUD/BossBar"]
+offset_left = 360.0
+offset_top = 42.0
+offset_right = 920.0
+offset_bottom = 70.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+text = "SEIGNEUR SQUELETTE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="UpgradePanel" type="Control" parent="HUD"]
+visible = false
+offset_right = 1280.0
+offset_bottom = 720.0
+
+[node name="Dim" type="ColorRect" parent="HUD/UpgradePanel"]
+offset_right = 1280.0
+offset_bottom = 720.0
+color = Color(0, 0, 0, 0.55)
+
+[node name="Title" type="Label" parent="HUD/UpgradePanel"]
+offset_left = 340.0
+offset_top = 190.0
+offset_right = 940.0
+offset_bottom = 240.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 28
+text = "Montée de niveau"
+horizontal_alignment = 1
+
+[node name="Option0" type="Button" parent="HUD/UpgradePanel"]
+offset_left = 340.0
+offset_top = 258.0
+offset_right = 940.0
+offset_bottom = 302.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_focus_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+
+[node name="Desc0" type="Label" parent="HUD/UpgradePanel"]
+offset_left = 350.0
+offset_top = 304.0
+offset_right = 930.0
+offset_bottom = 340.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="Option1" type="Button" parent="HUD/UpgradePanel"]
+offset_left = 340.0
+offset_top = 348.0
+offset_right = 940.0
+offset_bottom = 392.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_focus_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+
+[node name="Desc1" type="Label" parent="HUD/UpgradePanel"]
+offset_left = 350.0
+offset_top = 394.0
+offset_right = 930.0
+offset_bottom = 430.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="Option2" type="Button" parent="HUD/UpgradePanel"]
+offset_left = 340.0
+offset_top = 438.0
+offset_right = 940.0
+offset_bottom = 482.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_focus_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_hover_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.95, 0.83, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 20
+
+[node name="Desc2" type="Label" parent="HUD/UpgradePanel"]
+offset_left = 350.0
+offset_top = 484.0
+offset_right = 930.0
+offset_bottom = 520.0
+theme_override_colors/font_color = Color(0.93, 0.9, 0.82, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+
+[node name="RerollLabel" type="Label" parent="HUD/UpgradePanel"]
+offset_left = 340.0
+offset_top = 540.0
+offset_right = 940.0
+offset_bottom = 566.0
+theme_override_colors/font_color = Color(0.85, 0.8, 0.7, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 4
+theme_override_font_sizes/font_size = 15
+horizontal_alignment = 1

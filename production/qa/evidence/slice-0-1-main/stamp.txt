@@ -1,0 +1,4 @@
+Reviewed-Content-Hash: scenes/main.tscn e9d9e22b202552349440e8b344b151ca3c1f1da0
+Reviewed-Content-Hash: src/main.gd 9537e575afeeca530189c2598ef8c7c71be95f1d
+Reviewed-Content-Hash: src/ui/hud.gd 4d74f0c3fd294228f3ad8d56a34413bad0c613b7
+Reviewed-Content-Hash: project.godot ec69ad4d8c186fc65b076b88651c08166721ae36

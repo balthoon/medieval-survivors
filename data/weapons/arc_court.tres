@@ -1,0 +1,20 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "arc_court"
+display_name = "Arc court"
+kind = "projectile"
+shape = "blade"
+damage = 9.0
+attacks_per_second = 1.2
+range_px = 320.0
+arc_degrees = 0.0
+swing_duration = 0.12
+crit_chance = 0.08
+crit_multiplier = 2.0
+knockback = 12.0
+projectile_speed = 620.0
+color = Color(0.45, 0.32, 0.2, 1)

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+display_name = "Squelette"
+max_hp = 20
+move_speed = 70.0
+radius = 13.0
+color = Color(0.75, 0.2, 0.14, 1)
+xp_value = 1
+contact_damage = 8.0
+spawn_weight = 1.0

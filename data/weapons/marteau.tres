@@ -1,0 +1,19 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "marteau"
+display_name = "Marteau de guerre"
+kind = "melee"
+shape = "hammer"
+damage = 26.0
+attacks_per_second = 0.7
+range_px = 80.0
+arc_degrees = 160.0
+swing_duration = 0.22
+crit_chance = 0.03
+crit_multiplier = 2.2
+knockback = 60.0
+color = Color(0.55, 0.42, 0.3, 1)

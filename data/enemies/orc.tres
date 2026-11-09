@@ -1,0 +1,14 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+display_name = "Orc"
+max_hp = 56
+move_speed = 55.0
+radius = 20.0
+color = Color(0.35, 0.28, 0.2, 1)
+xp_value = 2
+contact_damage = 14.0
+spawn_weight = 0.5
