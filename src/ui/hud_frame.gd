@@ -16,6 +16,8 @@ enum Mode {
 	BARS,
 	## The single card behind the level-up / boss-loot options.
 	PANEL,
+	## The card behind the end-of-run victory banner.
+	VICTORY,
 }
 
 @export var mode: Mode = Mode.BARS
@@ -45,6 +47,8 @@ const BOTTOM := Rect2(14.0, 604.0, 1252.0, 108.0)
 const BOSS := Rect2(360.0, 70.0, 560.0, 62.0)
 ## Card behind the level-up and boss-loot options.
 const CARD := Rect2(316.0, 172.0, 648.0, 418.0)
+## Card behind the victory banner. Smaller than CARD: three lines, no options.
+const VICTORY := Rect2(392.0, 244.0, 496.0, 214.0)
 
 ## x of the rule that separates the weapon column from the equipment column.
 const DIVIDER_X := 620.0
@@ -66,6 +70,9 @@ func _ready() -> void:
 func _draw() -> void:
 	if mode == Mode.PANEL:
 		_card(CARD)
+		return
+	if mode == Mode.VICTORY:
+		_card(VICTORY)
 		return
 	_card(TOP_LEFT)
 	_card(TOP_RIGHT)

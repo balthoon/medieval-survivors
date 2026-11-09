@@ -83,6 +83,8 @@ var _elapsed := 0.0
 @onready var _boss_name: Label = $BossBar/BossName
 @onready var _boss_fill: ColorRect = $BossBar/BossBarFill
 @onready var _frame: HudFrame = $Frame
+@onready var _victory_panel: Control = $VictoryPanel
+@onready var _victory_detail: Label = $VictoryPanel/Detail
 
 
 func _ready() -> void:
@@ -108,6 +110,8 @@ func _ready() -> void:
 
 	hide_upgrade_choices()
 	hide_boss()
+	hide_dead()
+	hide_victory()
 	_update_low_hp_edges(0.0)
 
 
@@ -244,6 +248,28 @@ func show_dead() -> void:
 ## Hides the death banner.
 func hide_dead() -> void:
 	_death_label.visible = false
+
+
+## Shows the end-of-run victory card with the level reached and the number of
+## waves survived.
+func show_victory(level: int, waves: int) -> void:
+	_victory_detail.text = "Niveau %d · %d vagues" % [level, waves]
+	_victory_panel.visible = true
+	# The card owns the screen; a wave banner still fading behind it would cut
+	# through the title.
+	_banner_time = 0.0
+	_wave_banner.visible = false
+
+
+## Hides the victory card. Called at run start.
+func hide_victory() -> void:
+	_victory_panel.visible = false
+
+
+## True while the level-up or boss-loot panel owns the screen, so a caller about
+## to interrupt the run knows to wait for the choice first.
+func panel_open() -> bool:
+	return _upgrade_panel.visible
 
 
 ## Fills the three buttons from the given offers and shows the panel.

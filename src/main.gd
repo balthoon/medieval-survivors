@@ -144,6 +144,9 @@ var _xp := 0.0
 var _xp_needed := 0.0
 var _rerolls := REROLL_BASE
 var _dead := false
+## True once the run has been won. Same handling as death: the arena freezes and
+## R starts a fresh run.
+var _won := false
 
 var _shake_time := 0.0
 var _shake_total := 0.0
@@ -209,7 +212,7 @@ func _process(delta: float) -> void:
 	# even on the frame the player dies or the level-up panel opens.
 	_update_camera(delta)
 
-	if _dead:
+	if _dead or _won:
 		if Input.is_key_pressed(KEY_R):
 			get_tree().reload_current_scene()
 		return
@@ -228,6 +231,7 @@ func _process(delta: float) -> void:
 	_wave_director.tick(delta)
 	_refresh_hud()
 	_check_level_up()
+	_check_victory()
 
 
 ## XP required to reach the next level from [param for_level]. The first step is
@@ -642,6 +646,33 @@ func _on_player_died() -> void:
 	_boss = null
 	_hud.hide_boss()
 	_hud.show_dead()
+
+
+## The last wave is over and the boss that guards it is dead: the run is won.
+## An open panel holds the banner back, so the victory card never lands behind
+## the loot choice the dying boss just opened.
+func _check_victory() -> void:
+	if _won or _dead or not _wave_director.has_finished():
+		return
+	if _boss != null and is_instance_valid(_boss):
+		return
+	if _hud.panel_open():
+		return
+	_win()
+
+
+## Freezes the run behind the victory card. R starts a fresh run, as after a
+## death — the two endings differ in what they say, not in how they are read.
+func _win() -> void:
+	_won = true
+	is_paused = true
+	_hud.hide_boss()
+	_hud.show_victory(_level, _wave_director.wave_index + 1)
+	if _sfx != null:
+		_sfx.play("level_up", -1.0)
+	if _fx != null and _player != null:
+		add_child(RingBurst.create(_player.position, LEVEL_UP_COLOR))
+		_shake(BOSS_SLAM_SHAKE_DURATION, BOSS_SLAM_SHAKE_STRENGTH)
 
 
 func _on_spawn_tick(wave_index: int) -> void:

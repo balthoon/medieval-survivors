@@ -22,6 +22,7 @@ var data: WaveData = null
 
 var _spawn_timer: float = 0.0
 var _started: bool = false
+var _finished: bool = false
 
 ## Sets the tuning data and resets to wave 0.
 func setup(wave_data: WaveData) -> void:
@@ -30,6 +31,7 @@ func setup(wave_data: WaveData) -> void:
 	time_in_wave = 0.0
 	_spawn_timer = 0.0
 	_started = false
+	_finished = false
 
 ## Advances the wave clock. Emits spawn_tick when the spawn timer fires,
 ## and wave_ended / wave_started on the wave boundary.
@@ -83,6 +85,22 @@ func boss_tier(index: int = -1) -> int:
 	var checked := wave_index if index < 0 else index
 	return (checked + 1) / data.boss_every_waves - 1
 
+## True when [param index] is the last wave of the run. Pure and total like the
+## other queries: an endless run (total_waves of zero or less) has no last wave.
+func is_final_wave(index: int = -1) -> bool:
+	if data == null or data.total_waves <= 0:
+		return false
+	var checked := wave_index if index < 0 else index
+	return checked >= data.total_waves - 1
+
+
+## True once the final wave's clock has run out. The wave then stays parked at
+## its end — the caller decides the run is over — instead of rolling into an
+## eleventh. Always false on an endless run.
+func has_finished() -> bool:
+	return _finished
+
+
 ## Maximum simultaneous enemies for the current wave.
 func max_alive() -> int:
 	if data == null:
@@ -101,10 +119,18 @@ func time_left() -> float:
 		return 0.0
 	return maxf(data.duration - time_in_wave, 0.0)
 
-## Crosses as many wave boundaries as the elapsed time requires.
+## Crosses as many wave boundaries as the elapsed time requires, and stops at
+## the last one: a finished run keeps its wave clock parked at the boundary so
+## the HUD reads zero seconds rather than wrapping to the next wave.
 func _advance_waves() -> void:
 	var duration := maxf(data.duration, 0.001)
 	while time_in_wave >= duration:
+		if is_final_wave():
+			time_in_wave = duration
+			if not _finished:
+				_finished = true
+				wave_ended.emit(wave_index)
+			return
 		time_in_wave -= duration
 		_spawn_timer = 0.0
 		wave_ended.emit(wave_index)

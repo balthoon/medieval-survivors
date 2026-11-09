@@ -591,3 +591,50 @@ theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
 theme_override_constants/outline_size = 4
 theme_override_font_sizes/font_size = 15
 horizontal_alignment = 1
+
+[node name="VictoryPanel" type="Control" parent="HUD"]
+visible = false
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+
+[node name="Frame" type="Control" parent="HUD/VictoryPanel"]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+script = ExtResource("10_hud_frame")
+mode = 2
+
+[node name="Title" type="Label" parent="HUD/VictoryPanel"]
+offset_left = 392.0
+offset_top = 258.0
+offset_right = 888.0
+offset_bottom = 320.0
+theme_override_colors/font_color = Color(0.851, 0.651, 0.149, 1)
+theme_override_colors/font_outline_color = Color(0.09, 0.08, 0.07, 1)
+theme_override_constants/outline_size = 5
+theme_override_font_sizes/font_size = 44
+text = "VICTOIRE"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Detail" type="Label" parent="HUD/VictoryPanel"]
+offset_left = 392.0
+offset_top = 328.0
+offset_right = 888.0
+offset_bottom = 360.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 1)
+theme_override_font_sizes/font_size = 20
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Hint" type="Label" parent="HUD/VictoryPanel"]
+offset_left = 392.0
+offset_top = 374.0
+offset_right = 888.0
+offset_bottom = 402.0
+theme_override_colors/font_color = Color(0.16, 0.14, 0.12, 0.7)
+theme_override_font_sizes/font_size = 18
+text = "R pour recommencer"
+horizontal_alignment = 1
+vertical_alignment = 1

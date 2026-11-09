@@ -11,4 +11,5 @@ min_spawn_interval = 0.22
 base_max_alive = 18
 alive_growth_per_wave = 6
 boss_every_waves = 5
+total_waves = 10
 boss_spawn_interval_scale = 1.6

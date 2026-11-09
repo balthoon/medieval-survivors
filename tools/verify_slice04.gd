@@ -56,6 +56,7 @@ func _process(_delta: float) -> bool:
 	_check_range_gate()
 	_check_knockback_resistance()
 	_check_spawner_ignores_boss()
+	_check_finish_line()
 	_check_no_duplicate_slots()
 	_check_boss_wave_spawn()
 	_check_slam_damage()
@@ -228,6 +229,44 @@ func _check_spawner_ignores_boss() -> void:
 			elite_picks += 1
 	_expect("the horde never picks the boss", elite_picks, 0)
 	spawner.free()
+
+
+## The run has a finish line: the last wave ends the run instead of rolling into
+## an eleventh, and an endless run keeps rolling as before.
+func _check_finish_line() -> void:
+	var data := load(WAVE_PATH) as WaveData
+	var director := WaveDirector.new()
+	director.setup(data)
+
+	_expect("wave 0 is not the last wave", 1 if director.is_final_wave(0) else 0, 0)
+	_expect(
+		"the last wave is final",
+		1 if director.is_final_wave(data.total_waves - 1) else 0,
+		1,
+	)
+	_expect("a fresh run has not finished", 1 if director.has_finished() else 0, 0)
+
+	# Run the clock just past the end of the last wave.
+	director.wave_index = data.total_waves - 1
+	director.time_in_wave = data.duration - 0.01
+	director.tick(0.02)
+	_expect("the last wave finishes the run", 1 if director.has_finished() else 0, 1)
+	_expect(
+		"the wave index does not roll past the last",
+		director.wave_index,
+		data.total_waves - 1,
+	)
+	_expect_float("the clock parks at zero seconds left", director.time_left(), 0.0)
+
+	# Zero disables the finish line, which is how a prototype keeps running.
+	var endless := WaveData.new()
+	endless.total_waves = 0
+	director.setup(endless)
+	director.wave_index = 50
+	director.time_in_wave = endless.duration - 0.01
+	director.tick(0.02)
+	_expect("an endless run never finishes", 1 if director.has_finished() else 0, 0)
+	_expect("an endless run advances past any wave", director.wave_index, 51)
 
 
 func _check_no_duplicate_slots() -> void:

@@ -19,6 +19,10 @@ extends Resource
 ## One wave in this many is a boss wave, counting from wave 0. Zero disables
 ## bosses entirely, which is how a test or a prototype turns them off.
 @export var boss_every_waves: int = 5
+## How many waves one run lasts. The last one is the finish line: when its clock
+## runs out, the run is won rather than rolling into another wave. Zero means
+## endless, which is how a test or a prototype turns the finish line off.
+@export var total_waves: int = 10
 ## Multiplier applied to the spawn interval during a boss wave. Above one, so the
 ## horde thins out while the player duels: the boss, not the crowd, must be the
 ## thing the player is fighting.
