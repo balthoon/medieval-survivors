@@ -33,14 +33,27 @@ was drawn by a different hand.
 | Knight steel | `Color(0.400, 0.455, 0.541)` | |
 | Knight tabard | `Color(0.706, 0.208, 0.196)` | The player's accent. One per actor. |
 | Boss violet | `Color(0.360, 0.250, 0.420)` | Already in `seigneur_squelette.tres`. |
-| Gold | `Color(0.851, 0.651, 0.149)` | XP **only**. Never decorative. |
+| Gold | `Color(0.851, 0.651, 0.149)` | The reward ink: the XP economy and its payouts. Never rank, never page furniture, never currency. |
 | Danger | `Color(0.75, 0.20, 0.14)` | Telegraphs and boss effects. |
+
+### The gold rule
+
+Gold marks one thing: **the player being paid.** On the field that is the XP gem,
+and the burst that fires when XP becomes a level, when the boss drops its loot,
+and when the run is won. In the frame it is the XP bar. Once, as type, it is the
+victory card's title — the run's final payout, shown only after play has stopped,
+so it can never be mistaken for a pickup.
+
+It is never rank and never decoration: the boss's crown is **bone** (gold on a
+threat reads as loot, not rank), the wave banner is **ink** (a page turn is not a
+payout), and the run currency is never gold. The test for any future gold: *is the
+player being paid at this moment? If not, it is not gold.*
 
 ### Three tones, one accent
 
 Every actor is built from **base + light + dark** of a single hue, plus **one**
-accent colour (tabard red for the knight, gold for the boss crown, tusks for the
-orc). A second accent is a mistake, not a flourish.
+accent colour (tabard red for the knight, danger for the boss's eyes and staff,
+tusks for the orc). A second accent is a mistake, not a flourish.
 
 Light comes from **top-left**. Light tone on the upper-left third of each volume,
 dark tone on the lower-right, base in between. Consistency here is what makes a
@@ -94,9 +107,17 @@ head sitting above the chest with a long muzzle, two short wide ears, and a tail
 swept out to one side so the outline stays wider than it is tall. Cool grey —
 the only desaturated creature, so a pack reads as a pack.
 
+**No horns.** The wolf charges, but the charge is behaviour, not anatomy. It is
+announced by the body flattening low before it moves, then by a ground line drawn
+along the charge path. Horns would put a vertical mark on the only horizontal
+silhouette and read as a ram — mass, the wrong question for an attack the player
+dodges; the ears already taught this lesson (tall ears turned the wolf into a
+bat). The curse is carried by the colour: the wolf is the only desaturated
+creature in a warm world. W1-E3 draws the crouch and the line; it adds no horns.
+
 ### Boss — Seigneur squelette
 
-Tall, with a cape that is visible behind the body and a gold crown. Skull larger
+Tall, with a cape that is visible behind the body and a crown of dark bone. Skull larger
 and more angular than the plain skeleton, ribs deeper, eyes drawn in the accent
 colour so it reads as *the* threat. Carries a staff.
 
