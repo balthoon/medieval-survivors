@@ -1,0 +1,93 @@
+## W0-E4 — the blocking test gate.
+##
+## A merge into `main` is allowed only when this job is green. It fails on:
+##   - any non-zero gdUnit4 exit (100 assertion, 101 orphan nodes, 103 headless
+##     unsupported, 104 engine version, 105 script/parse error);
+##   - a run that executed zero test cases — gdUnit4 exits 0 for that, and a
+##     green run over nothing proves nothing.
+##
+## The engine version is pinned to project.yaml's `engine.version`. The job is
+## not "required" by this file alone: after the first run, mark `gdUnit4 suite`
+## as a required status check in Settings → Branches → main.
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gdunit4:
+    name: gdUnit4 suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GODOT_VERSION: 4.7.2-stable
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install Godot ${{ env.GODOT_VERSION }}
+        run: |
+          set -euo pipefail
+          asset="Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          url="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/${asset}"
+          curl -fsSL -o /tmp/godot.zip "$url"
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          sudo install -m 0755 "/tmp/godot/Godot_v${GODOT_VERSION}_linux.x86_64" /usr/local/bin/godot
+          godot --version
+
+      - name: Install headless runtime libraries
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libfontconfig1 libgl1 libasound2t64 \
+            || sudo apt-get install -y --no-install-recommends libfontconfig1 libgl1 libasound2
+
+      - name: Import the project
+        run: godot --headless --editor --quit
+
+      - name: Run the suite
+        run: |
+          set +e
+          godot --headless -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
+            -a res://tests --ignoreHeadlessMode
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::error::gdUnit4 exited $status; 0 required (100 assertion, 101 orphans, 103 headless, 104 version, 105 script)"
+            exit "$status"
+          fi
+
+      - name: Refuse a run with zero tests
+        run: |
+          python3 - <<'PY'
+          import glob
+          import sys
+          import xml.etree.ElementTree as ET
+
+          files = glob.glob("reports/report_*/results.xml")
+          if len(files) != 1:
+              sys.exit(f"expected exactly one results.xml, found {len(files)}")
+          total = sum(
+              int(suite.get("tests", 0))
+              for suite in ET.parse(files[0]).getroot().iter("testsuite")
+          )
+          print(f"executed test cases: {total}")
+          if total <= 0:
+              sys.exit("zero test cases executed — a green run proves nothing")
+          PY
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdunit4-report
+          path: reports/
+          if-no-files-found: ignore

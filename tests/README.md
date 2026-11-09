@@ -73,3 +73,12 @@ supprimés. Correspondance :
 
 Aucun merge sur `main` si `commands.test` ne sort pas en `0`, si le compte de
 tests exécutés est nul, ou si le code de sortie est `101`, `103`, `104` ou `105`.
+
+Le gate est `.github/workflows/tests.yml`, job **`gdUnit4 suite`** : il installe
+Godot `4.7.2-stable` (la version de `project.yaml`), importe le projet en
+headless, lance gdUnit4 avec les mêmes arguments que `commands.test` (binaire
+Linux au lieu du binaire Windows), puis refuse tout code de
+sortie non nul et tout rapport à zéro test. Le job ne devient bloquant
+qu'après une première exécution réussie : dans **Settings → Branches → main**,
+ajouter `gdUnit4 suite` aux *required status checks*. Tant que ce réglage n'est
+pas fait, le workflow signale mais ne bloque pas.
