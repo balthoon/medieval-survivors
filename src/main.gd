@@ -6,106 +6,24 @@
 ## ships no InputMap.
 extends Node2D
 
-## Path of the hero class used by the run.
-const CLASS_PATH := "res://data/classes/chevalier.tres"
-## Path of the wave tuning resource.
-const WAVE_PATH := "res://data/waves/base_wave.tres"
-## Enemy archetypes available to the spawner.
-const ENEMY_PATHS := [
-	"res://data/enemies/squelette.tres",
-	"res://data/enemies/loup_maudit.tres",
-	"res://data/enemies/orc.tres",
-]
-## The boss spawned on every boss wave. Never added to the normal spawn pool, so
-## the horde can never field one.
-const BOSS_PATH := "res://data/enemies/seigneur_squelette.tres"
-## Weapon resources offered on level up, starting weapon included.
-const WEAPON_PATHS := [
-	"res://data/weapons/epee_longue.tres",
-	"res://data/weapons/dague.tres",
-	"res://data/weapons/marteau.tres",
-	"res://data/weapons/arc_court.tres",
-]
-## Equipment resources offered on level up.
-const EQUIPMENT_PATHS := [
-	"res://data/equipment/casque_fer.tres",
-	"res://data/equipment/casque_ancien.tres",
-	"res://data/equipment/plastron_cuir.tres",
-	"res://data/equipment/plastron_mailles.tres",
-	"res://data/equipment/bottes_cuir.tres",
-	"res://data/equipment/bottes_rapides.tres",
-	"res://data/equipment/gants_fer.tres",
-	"res://data/equipment/gants_precis.tres",
-	"res://data/equipment/anneau_argent.tres",
-	"res://data/equipment/anneau_rubis.tres",
-	"res://data/equipment/amulette_lune.tres",
-	"res://data/equipment/amulette_sang.tres",
-]
-## Upgrade resources offered on level up.
-const UPGRADE_PATHS := [
-	"res://data/upgrades/degats.tres",
-	"res://data/upgrades/cadence.tres",
-	"res://data/upgrades/vitalite.tres",
-	"res://data/upgrades/vitesse.tres",
-	"res://data/upgrades/precision.tres",
-]
+## Path of the run tuning resource: XP curve, offers, rerolls, hitstop, shake
+## and boss scaling.
+const RUN_CONFIG_PATH := "res://data/run_config.tres"
 
-## Flat XP cost of the first level curve step.
-const XP_BASE := 5
-## Extra XP per level added to the curve.
-const XP_PER_LEVEL := 4
-## Seconds an enemy must wait after dealing contact damage.
-const CONTACT_COOLDOWN := 1.0
-## How many choices a level up offers.
-const UPGRADE_OFFER_COUNT := 3
-## Deadzone applied to the joypad movement axes.
-const JOY_AXIS_DEADZONE := 0.25
-## Relative weight of a new-weapon choice against a stat or equipment choice.
-const WEAPON_OFFER_WEIGHT := 1.4
-## Relative weight of a common piece of equipment against a stat or weapon choice.
-const EQUIPMENT_OFFER_WEIGHT := 0.9
-## Rerolls the player starts the run with.
-const REROLL_BASE := 2
-## Levels that grant one extra reroll.
-const REROLL_LEVELS := [10, 20]
-## Duration of the camera shake when the player is hit, in seconds.
-const SHAKE_DURATION := 0.18
-## Peak offset of the camera shake, in pixels.
-const SHAKE_STRENGTH := 4.0
-## Hitstop applied on a critical hit, in seconds.
-const CRIT_HITSTOP := 0.055
-## Hitstop applied on a heavy hit, in seconds.
-const HEAVY_HITSTOP := 0.04
-## Hitstop applied when the level-up panel opens, in seconds.
-const LEVEL_UP_HITSTOP := 0.12
-## Minimum damage of a hit treated as heavy for hitstop purposes.
-const HEAVY_HIT_DAMAGE := 22.0
-## Minimum real-time gap between two hitstops, in seconds.
-const HITSTOP_REST := 0.3
-## Time scale during a hitstop. Small but not zero, so the scene keeps stepping.
-const HITSTOP_SCALE := 0.05
-## Colour of the ring drawn when the level-up panel opens.
-const LEVEL_UP_COLOR := Color(0.85, 0.65, 0.15)
-## Health multiplier granted to a boss per tier above the first.
-const BOSS_HP_PER_TIER := 0.9
-## Damage multiplier granted to a boss per tier above the first.
-const BOSS_DAMAGE_PER_TIER := 0.35
-## Relative weight of a weapon in the boss loot panel.
-const BOSS_LOOT_WEAPON_WEIGHT := 3.0
-## Relative weight of a piece of equipment in the boss loot panel.
-const BOSS_LOOT_EQUIPMENT_WEIGHT := 2.5
-## Title of the panel opened by a boss death.
-const BOSS_LOOT_TITLE := "Butin du boss"
-## Colour of the impact ring drawn where a slam lands.
-const BOSS_SLAM_COLOR := Color(0.75, 0.20, 0.14)
-## Duration of the camera shake when a slam lands, in seconds.
-const BOSS_SLAM_SHAKE_DURATION := 0.3
-## Peak offset of the camera shake when a slam lands, in pixels.
-const BOSS_SLAM_SHAKE_STRENGTH := 7.0
+## Content resources this run draws from: enemies, weapons, equipment, upgrades,
+## the boss, the wave tuning and the starting class. Assigned in the scene, so
+## this script names no content path. A missing assignment is reported once and
+## leaves the run empty rather than halting it.
+@export var catalogue: Catalogue = null
 
 ## True while the level-up panel is open. Manual pause: the scene tree is never
 ## paused, so the HUD keeps receiving input.
 var is_paused := false
+
+## Run tuning, loaded from [constant RUN_CONFIG_PATH] at the top of _ready().
+## Never null once _ready() has run: a missing resource falls back to the class
+## defaults, which are the historical constants.
+var _config: RunConfig = null
 
 var _player: Player = null
 var _enemy_manager: EnemyManager = null
@@ -142,7 +60,7 @@ var _base_stats: Stats = null
 var _level := 1
 var _xp := 0.0
 var _xp_needed := 0.0
-var _rerolls := REROLL_BASE
+var _rerolls := 0
 var _dead := false
 ## True once the run has been won. Same handling as death: the arena freezes and
 ## R starts a fresh run.
@@ -159,6 +77,14 @@ var _hitstop_ready_at := 0
 
 
 func _ready() -> void:
+	_config = load(RUN_CONFIG_PATH) as RunConfig
+	if _config == null:
+		push_warning(
+			"main: no run config at %s — falling back to the class defaults" % RUN_CONFIG_PATH
+		)
+		_config = RunConfig.new()
+	_rerolls = _config.reroll_base
+
 	# The mute shortcut must fire even while a HUD button holds focus.
 	set_process_unhandled_key_input(true)
 	_player = $Player as Player
@@ -177,7 +103,7 @@ func _ready() -> void:
 	_fx_rng.randomize()
 	_load_data()
 
-	var class_data := load(CLASS_PATH) as ClassData
+	var class_data := catalogue.starting_class
 	if class_data != null:
 		_player.setup(class_data)
 		_inventory.setup_starting(class_data.weapon)
@@ -191,7 +117,7 @@ func _ready() -> void:
 	_weapon_system.sfx = _sfx
 	_weapon_system.hit_landed.connect(_on_hit_landed)
 
-	var wave_data := load(WAVE_PATH) as WaveData
+	var wave_data := catalogue.wave
 	_wave_director.setup(wave_data)
 	_wave_director.spawn_tick.connect(_on_spawn_tick)
 	_wave_director.wave_started.connect(_on_wave_started)
@@ -238,33 +164,24 @@ func _process(delta: float) -> void:
 ## deliberately cheap, so the first choice lands during wave 1 rather than at the
 ## end of it.
 func xp_to_next(for_level: int) -> float:
-	return float(XP_BASE + (for_level - 1) * XP_PER_LEVEL)
+	return float(_config.xp_base + (for_level - 1) * _config.xp_per_level)
 
 
+## Copies the catalogue's content into this run's own pools. The arrays are
+## copied rather than referenced: trimming a pool must never mutate the shared
+## resource, and a missing catalogue leaves every pool empty instead of failing.
 func _load_data() -> void:
-	for path in ENEMY_PATHS:
-		var enemy_data := load(path) as EnemyData
-		if enemy_data != null:
-			_enemy_pool.append(enemy_data)
+	if catalogue == null:
+		push_warning("main: no catalogue assigned — the run will have no content")
+		catalogue = Catalogue.new()
 
-	_boss_data = load(BOSS_PATH) as EnemyData
+	_enemy_pool.assign(catalogue.enemies)
+	_boss_data = catalogue.boss
 	if _boss_data == null:
-		push_warning("main: no boss at %s — boss waves will be empty" % BOSS_PATH)
-
-	for path in UPGRADE_PATHS:
-		var upgrade := load(path) as UpgradeData
-		if upgrade != null:
-			_upgrades.append(upgrade)
-
-	for path in WEAPON_PATHS:
-		var weapon := load(path) as WeaponData
-		if weapon != null:
-			_weapon_pool.append(weapon)
-
-	for path in EQUIPMENT_PATHS:
-		var item := load(path) as EquipmentData
-		if item != null:
-			_equipment_pool.append(item)
+		push_warning("main: catalogue has no boss — boss waves will be empty")
+	_upgrades.assign(catalogue.upgrades)
+	_weapon_pool.assign(catalogue.weapons)
+	_equipment_pool.assign(catalogue.equipment)
 
 
 func _read_move_dir() -> Vector2:
@@ -282,7 +199,7 @@ func _read_move_dir() -> Vector2:
 		dir.y += 1.0
 
 	var joy := Vector2(Input.get_joy_axis(0, 0), Input.get_joy_axis(0, 1))
-	if joy.length() > JOY_AXIS_DEADZONE:
+	if joy.length() > _config.joy_axis_deadzone:
 		dir += joy
 
 	if dir.length() > 1.0:
@@ -336,7 +253,7 @@ func _update_contact_damage(delta: float) -> void:
 			continue
 
 		var landed := _player.take_damage(enemy.contact_damage)
-		enemy.contact_cooldown = CONTACT_COOLDOWN
+		enemy.contact_cooldown = _config.contact_cooldown
 		if landed:
 			_on_player_hit()
 		if not _player.is_alive():
@@ -346,7 +263,7 @@ func _update_contact_damage(delta: float) -> void:
 ## Player-side feedback for one landed contact hit.
 func _on_player_hit() -> void:
 	_hud.flash_damage()
-	_shake(SHAKE_DURATION, SHAKE_STRENGTH)
+	_shake(_config.shake_duration, _config.shake_strength)
 	if _sfx != null:
 		_sfx.play("player_hurt", -3.0)
 
@@ -393,21 +310,21 @@ func _check_level_up() -> void:
 	_xp -= _xp_needed
 	_level += 1
 	_xp_needed = xp_to_next(_level)
-	if _level in REROLL_LEVELS:
+	if _level in _config.reroll_levels:
 		_rerolls += 1
 	_offer_choices()
 
 
 func _offer_choices() -> void:
-	var choices := _build_offers(UPGRADE_OFFER_COUNT)
+	var choices := _build_offers(_config.upgrade_offer_count)
 	if choices.is_empty():
 		return
 	_pending_choices = choices
 	_boss_loot_open = false
 	is_paused = true
-	_request_hitstop(LEVEL_UP_HITSTOP)
+	_request_hitstop(_config.level_up_hitstop)
 	if _fx != null:
-		add_child(RingBurst.create(_player.position, LEVEL_UP_COLOR))
+		add_child(RingBurst.create(_player.position, _config.level_up_color))
 	if _sfx != null:
 		_sfx.play("level_up", -2.0)
 	_hud.show_upgrade_choices(choices, _rerolls)
@@ -421,14 +338,16 @@ func _offer_boss_loot() -> void:
 	if _dead:
 		return
 	var choices := _build_offers(
-		UPGRADE_OFFER_COUNT, BOSS_LOOT_WEAPON_WEIGHT, BOSS_LOOT_EQUIPMENT_WEIGHT
+		_config.upgrade_offer_count,
+		_config.boss_loot_weapon_weight,
+		_config.boss_loot_equipment_weight
 	)
 	if choices.is_empty():
 		return
 	_pending_choices = choices
 	_boss_loot_open = true
 	is_paused = true
-	_hud.show_upgrade_choices(choices, _rerolls, BOSS_LOOT_TITLE)
+	_hud.show_upgrade_choices(choices, _rerolls, _config.boss_loot_title)
 	_refresh_hud()
 
 
@@ -438,12 +357,18 @@ func _offer_boss_loot() -> void:
 ## same stat for less is never offered — the panel must not hide a downgrade.
 ##
 ## [param weapon_weight] and [param equipment_weight] override the normal kind
-## weights, which is how the boss loot panel leans its offers toward gear.
+## weights, which is how the boss loot panel leans its offers toward gear. A
+## negative value means "use the run tuning": GDScript default arguments must be
+## constant, so they cannot name [member RunConfig] fields directly.
 func _build_offers(
 	count: int,
-	weapon_weight: float = WEAPON_OFFER_WEIGHT,
-	equipment_weight: float = EQUIPMENT_OFFER_WEIGHT
+	weapon_weight: float = -1.0,
+	equipment_weight: float = -1.0
 ) -> Array[Offer]:
+	if weapon_weight < 0.0:
+		weapon_weight = _config.weapon_offer_weight
+	if equipment_weight < 0.0:
+		equipment_weight = _config.equipment_offer_weight
 	var candidates: Array[Offer] = []
 
 	for upgrade in _upgrades:
@@ -592,14 +517,16 @@ func _on_reroll_requested() -> void:
 	var choices: Array[Offer]
 	if _boss_loot_open:
 		choices = _build_offers(
-			UPGRADE_OFFER_COUNT, BOSS_LOOT_WEAPON_WEIGHT, BOSS_LOOT_EQUIPMENT_WEIGHT
+			_config.upgrade_offer_count,
+			_config.boss_loot_weapon_weight,
+			_config.boss_loot_equipment_weight
 		)
 	else:
-		choices = _build_offers(UPGRADE_OFFER_COUNT)
+		choices = _build_offers(_config.upgrade_offer_count)
 	if choices.is_empty():
 		return
 	_pending_choices = choices
-	var title := BOSS_LOOT_TITLE if _boss_loot_open else HUD.LEVEL_UP_TITLE
+	var title := _config.boss_loot_title if _boss_loot_open else HUD.LEVEL_UP_TITLE
 	_hud.show_upgrade_choices(choices, _rerolls, title)
 
 
@@ -671,8 +598,8 @@ func _win() -> void:
 	if _sfx != null:
 		_sfx.play("level_up", -1.0)
 	if _fx != null and _player != null:
-		add_child(RingBurst.create(_player.position, LEVEL_UP_COLOR))
-		_shake(BOSS_SLAM_SHAKE_DURATION, BOSS_SLAM_SHAKE_STRENGTH)
+		add_child(RingBurst.create(_player.position, _config.level_up_color))
+		_shake(_config.boss_slam_shake_duration, _config.boss_slam_shake_strength)
 
 
 func _on_spawn_tick(wave_index: int) -> void:
@@ -707,8 +634,8 @@ func _spawn_boss(wave_index: int) -> void:
 		return
 
 	var tier := maxi(_wave_director.boss_tier(wave_index), 0)
-	var hp_scale := 1.0 + BOSS_HP_PER_TIER * float(tier)
-	var damage_scale := 1.0 + BOSS_DAMAGE_PER_TIER * float(tier)
+	var hp_scale := 1.0 + _config.boss_hp_per_tier * float(tier)
+	var damage_scale := 1.0 + _config.boss_damage_per_tier * float(tier)
 
 	var at := _spawner.spawn_position(_rng)
 	_boss = _enemy_manager.spawn(_boss_data, at, _enemies, hp_scale, damage_scale)
@@ -725,8 +652,8 @@ func _on_boss_slam(at: Vector2, radius: float, damage: float) -> void:
 	if _dead or _player == null:
 		return
 	if _fx != null:
-		add_child(RingBurst.create(at, BOSS_SLAM_COLOR))
-	_shake(BOSS_SLAM_SHAKE_DURATION, BOSS_SLAM_SHAKE_STRENGTH)
+		add_child(RingBurst.create(at, _config.boss_slam_color))
+	_shake(_config.boss_slam_shake_duration, _config.boss_slam_shake_strength)
 	if _sfx != null:
 		_sfx.play("boss_slam", -1.0)
 	if _player.position.distance_to(at) > radius + Player.RADIUS:
@@ -739,7 +666,7 @@ func _on_boss_slam(at: Vector2, radius: float, damage: float) -> void:
 ## on the ground, so the level ups they buy arrive after the loot choice.
 func _on_boss_killed() -> void:
 	var at := _player.position
-	var colour := BOSS_SLAM_COLOR
+	var colour := _config.boss_slam_color
 	if _boss != null and is_instance_valid(_boss):
 		at = _boss.position
 		if _boss.data != null:
@@ -749,9 +676,9 @@ func _on_boss_killed() -> void:
 	_hud.hide_boss()
 	_hud.show_wave_banner(_wave_director.wave_index, "VAINCU")
 	if _fx != null:
-		add_child(RingBurst.create(at, LEVEL_UP_COLOR))
+		add_child(RingBurst.create(at, _config.level_up_color))
 		_fx.spawn_shards(at, colour)
-	_shake(BOSS_SLAM_SHAKE_DURATION, BOSS_SLAM_SHAKE_STRENGTH)
+	_shake(_config.boss_slam_shake_duration, _config.boss_slam_shake_strength)
 	if _sfx != null:
 		_sfx.play("level_up", -1.0)
 	_offer_boss_loot()
@@ -765,9 +692,9 @@ func _on_wave_ended(wave_index: int) -> void:
 ## few dozen milliseconds; the rest is left to the floating numbers.
 func _on_hit_landed(is_crit: bool, amount: float, _at: Vector2) -> void:
 	if is_crit:
-		_request_hitstop(CRIT_HITSTOP)
-	elif amount >= HEAVY_HIT_DAMAGE:
-		_request_hitstop(HEAVY_HITSTOP)
+		_request_hitstop(_config.crit_hitstop)
+	elif amount >= _config.heavy_hit_damage:
+		_request_hitstop(_config.heavy_hitstop)
 
 
 ## Freezes the frame briefly. Restored by a real-time timer, because the scaled
@@ -780,8 +707,8 @@ func _request_hitstop(duration: float) -> void:
 		return
 
 	_hitstop_active = true
-	_hitstop_ready_at = now + int((duration + HITSTOP_REST) * 1000.0)
-	Engine.time_scale = HITSTOP_SCALE
+	_hitstop_ready_at = now + int((duration + _config.hitstop_rest) * 1000.0)
+	Engine.time_scale = _config.hitstop_scale
 	var timer := get_tree().create_timer(duration, true, false, true)
 	timer.timeout.connect(_end_hitstop)
 

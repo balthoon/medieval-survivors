@@ -1,0 +1,44 @@
+[gd_resource type="Resource" load_steps=33 format=3]
+
+[ext_resource type="Script" path="res://src/data/catalogue.gd" id="1_script"]
+[ext_resource type="Script" path="res://src/data/enemy_data.gd" id="2_enemy_type"]
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="3_weapon_type"]
+[ext_resource type="Script" path="res://src/data/equipment_data.gd" id="4_equipment_type"]
+[ext_resource type="Script" path="res://src/data/upgrade_data.gd" id="5_upgrade_type"]
+[ext_resource type="Resource" path="res://data/enemies/squelette.tres" id="6_squelette"]
+[ext_resource type="Resource" path="res://data/enemies/loup_maudit.tres" id="7_loup_maudit"]
+[ext_resource type="Resource" path="res://data/enemies/orc.tres" id="8_orc"]
+[ext_resource type="Resource" path="res://data/enemies/seigneur_squelette.tres" id="9_seigneur"]
+[ext_resource type="Resource" path="res://data/weapons/epee_longue.tres" id="10_epee_longue"]
+[ext_resource type="Resource" path="res://data/weapons/dague.tres" id="11_dague"]
+[ext_resource type="Resource" path="res://data/weapons/marteau.tres" id="12_marteau"]
+[ext_resource type="Resource" path="res://data/weapons/arc_court.tres" id="13_arc_court"]
+[ext_resource type="Resource" path="res://data/equipment/casque_fer.tres" id="14_casque_fer"]
+[ext_resource type="Resource" path="res://data/equipment/casque_ancien.tres" id="15_casque_ancien"]
+[ext_resource type="Resource" path="res://data/equipment/plastron_cuir.tres" id="16_plastron_cuir"]
+[ext_resource type="Resource" path="res://data/equipment/plastron_mailles.tres" id="17_plastron_mailles"]
+[ext_resource type="Resource" path="res://data/equipment/bottes_cuir.tres" id="18_bottes_cuir"]
+[ext_resource type="Resource" path="res://data/equipment/bottes_rapides.tres" id="19_bottes_rapides"]
+[ext_resource type="Resource" path="res://data/equipment/gants_fer.tres" id="20_gants_fer"]
+[ext_resource type="Resource" path="res://data/equipment/gants_precis.tres" id="21_gants_precis"]
+[ext_resource type="Resource" path="res://data/equipment/anneau_argent.tres" id="22_anneau_argent"]
+[ext_resource type="Resource" path="res://data/equipment/anneau_rubis.tres" id="23_anneau_rubis"]
+[ext_resource type="Resource" path="res://data/equipment/amulette_lune.tres" id="24_amulette_lune"]
+[ext_resource type="Resource" path="res://data/equipment/amulette_sang.tres" id="25_amulette_sang"]
+[ext_resource type="Resource" path="res://data/upgrades/degats.tres" id="26_degats"]
+[ext_resource type="Resource" path="res://data/upgrades/cadence.tres" id="27_cadence"]
+[ext_resource type="Resource" path="res://data/upgrades/vitalite.tres" id="28_vitalite"]
+[ext_resource type="Resource" path="res://data/upgrades/vitesse.tres" id="29_vitesse"]
+[ext_resource type="Resource" path="res://data/upgrades/precision.tres" id="30_precision"]
+[ext_resource type="Resource" path="res://data/waves/base_wave.tres" id="31_base_wave"]
+[ext_resource type="Resource" path="res://data/classes/chevalier.tres" id="32_chevalier"]
+
+[resource]
+script = ExtResource("1_script")
+enemies = Array[ExtResource("2_enemy_type")]([ExtResource("6_squelette"), ExtResource("7_loup_maudit"), ExtResource("8_orc")])
+weapons = Array[ExtResource("3_weapon_type")]([ExtResource("10_epee_longue"), ExtResource("11_dague"), ExtResource("12_marteau"), ExtResource("13_arc_court")])
+equipment = Array[ExtResource("4_equipment_type")]([ExtResource("14_casque_fer"), ExtResource("15_casque_ancien"), ExtResource("16_plastron_cuir"), ExtResource("17_plastron_mailles"), ExtResource("18_bottes_cuir"), ExtResource("19_bottes_rapides"), ExtResource("20_gants_fer"), ExtResource("21_gants_precis"), ExtResource("22_anneau_argent"), ExtResource("23_anneau_rubis"), ExtResource("24_amulette_lune"), ExtResource("25_amulette_sang")])
+upgrades = Array[ExtResource("5_upgrade_type")]([ExtResource("26_degats"), ExtResource("27_cadence"), ExtResource("28_vitalite"), ExtResource("29_vitesse"), ExtResource("30_precision")])
+boss = ExtResource("9_seigneur")
+wave = ExtResource("31_base_wave")
+starting_class = ExtResource("32_chevalier")

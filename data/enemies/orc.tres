@@ -4,6 +4,7 @@
 
 [resource]
 script = ExtResource("1_script")
+id = "orc"
 display_name = "Orc"
 art = "orc"
 max_hp = 56
@@ -13,3 +14,4 @@ color = Color(0.431, 0.549, 0.239, 1)
 xp_value = 2
 contact_damage = 14.0
 spawn_weight = 0.5
+unlock_wave = 4

@@ -14,7 +14,13 @@ extends Resource
 ## - `boss` — tall, caped, crowned, staff in hand
 const ART_KEYS := ["skeleton", "orc", "wolf", "boss"]
 
-## Name used by debug output and future UI.
+## Stable machine identifier for this archetype, never renamed once saved: code
+## and saved data key on it. [member display_name] is UI text and will be
+## localized or renamed, so it must never be used as a lookup key. Must be
+## non-empty and unique across every enemy, the boss included.
+@export var id: String = ""
+## Name used by debug output and future UI. Localizable, and therefore not a
+## stable key: use [member id] whenever code needs to identify an archetype.
 @export var display_name: String = ""
 ## Which drawing [method ActorArt.draw_creature] paints for this archetype. Must
 ## be one of [constant ART_KEYS]; the skeleton is drawn for any unknown key, so a
@@ -34,6 +40,10 @@ const ART_KEYS := ["skeleton", "orc", "wolf", "boss"]
 @export var contact_damage: float = 8.0
 ## Relative weight when picking a spawn archetype; 0 disables it.
 @export var spawn_weight: float = 1.0
+## First wave index in which the normal spawner may pick this archetype. 0 makes
+## it available from the run's first wave. The boss ignores this field: the wave
+## director spawns it on boss waves, never the normal pool.
+@export var unlock_wave: int = 0
 
 ## True for a boss. The normal spawner never picks an elite, and the run spawns
 ## it on boss waves only, one at a time.

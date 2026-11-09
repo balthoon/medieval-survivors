@@ -1,0 +1,32 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/run_config.gd" id="1_runconfig"]
+
+[resource]
+script = ExtResource("1_runconfig")
+xp_base = 5
+xp_per_level = 4
+contact_cooldown = 1.0
+upgrade_offer_count = 3
+joy_axis_deadzone = 0.25
+weapon_offer_weight = 1.4
+equipment_offer_weight = 0.9
+reroll_base = 2
+reroll_levels = Array[int]([10, 20])
+shake_duration = 0.18
+shake_strength = 4.0
+crit_hitstop = 0.055
+heavy_hitstop = 0.04
+level_up_hitstop = 0.12
+heavy_hit_damage = 22.0
+hitstop_rest = 0.3
+hitstop_scale = 0.05
+level_up_color = Color(0.85, 0.65, 0.15, 1)
+boss_hp_per_tier = 0.9
+boss_damage_per_tier = 0.35
+boss_loot_weapon_weight = 3.0
+boss_loot_equipment_weight = 2.5
+boss_loot_title = "Butin du boss"
+boss_slam_color = Color(0.75, 0.2, 0.14, 1)
+boss_slam_shake_duration = 0.3
+boss_slam_shake_strength = 7.0
