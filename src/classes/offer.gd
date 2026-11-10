@@ -1,13 +1,14 @@
 ## One choice shown on the level-up panel.
 ##
-## Four kinds of choice share the same panel: a stat upgrade, a new weapon, a
-## weapon level, or a piece of equipment. Exactly one of the payload fields is
-## set, and [member kind] says which. Pure data, so the panel and the choice
-## logic stay testable.
+## Five kinds of choice share the same panel: a stat upgrade, a new weapon, a
+## weapon level, a weapon evolution, or a piece of equipment. Exactly one of the
+## payload fields is set, and [member kind] says which. Pure data, so the panel
+## and the choice logic stay testable.
 class_name Offer
 extends RefCounted
 
-## Kind of choice: "stat", "weapon", "weapon_upgrade" or "equipment".
+## Kind of choice: "stat", "weapon", "weapon_upgrade", "weapon_evolution" or
+## "equipment".
 var kind: String = "stat"
 ## Relative weight when rolling the three choices, set by the caller.
 var weight: float = 1.0
@@ -17,10 +18,14 @@ var title: String = ""
 var description: String = ""
 ## Set when kind is "stat".
 var stat_upgrade: UpgradeData = null
-## Set when kind is "weapon" or "weapon_upgrade".
+## Set when kind is "weapon", "weapon_upgrade" or "weapon_evolution". For an
+## evolution it is the weapon carried, the one that leaves the slot.
 var weapon: WeaponData = null
-## Level the weapon reaches if this upgrade is chosen. One for a new weapon.
+## Level the weapon reaches if this upgrade is chosen. One for a new weapon; for
+## an evolution, the level the evolved weapon keeps.
 var target_level: int = 1
+## Set when kind is "weapon_evolution": the weapon [member weapon] becomes.
+var evolved_weapon: WeaponData = null
 ## Set when kind is "equipment".
 var equipment: EquipmentData = null
 
@@ -63,6 +68,25 @@ static func for_weapon_upgrade(carried: WeaponData, level: int) -> Offer:
 			[carried.display_name, offer.target_level]
 		)
 		offer.description = carried.description
+	return offer
+
+
+## Builds a weapon-evolution choice. The description starts as the evolved
+## weapon's own pitch; main rewrites it with the stats the evolution actually
+## reaches and the level it keeps.
+static func for_weapon_evolution(carried: WeaponData, evolved: WeaponData, level: int) -> Offer:
+	var offer := Offer.new()
+	offer.kind = "weapon_evolution"
+	offer.weapon = carried
+	offer.evolved_weapon = evolved
+	offer.target_level = maxi(level, 1)
+	if carried != null and evolved != null:
+		offer.title = Loc.format(
+			"offer.weapon_evolution",
+			"★ %s → %s",
+			[carried.display_name, evolved.display_name]
+		)
+		offer.description = evolved.description
 	return offer
 
 

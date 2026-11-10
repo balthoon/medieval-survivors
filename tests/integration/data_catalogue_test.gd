@@ -331,3 +331,67 @@ func test_the_two_rare_passives_are_carried_by_their_designed_pieces() -> void:
 	assert_float(ring.passive_value).is_equal_approx(0.15, 0.0001)
 	assert_str(String(amulet.passive_id)).is_equal("level_up_heal")
 	assert_float(amulet.passive_value).is_equal_approx(8.0, 0.0001)
+
+
+func test_every_weapon_evolves_into_a_distinct_upgraded_weapon() -> void:
+	# Arrange
+	var catalogue := _load_catalogue()
+	assert_object(catalogue).is_not_null()
+	if catalogue == null:
+		return
+	var base_ids := {}
+	for weapon in catalogue.weapons:
+		base_ids[weapon.id] = true
+	var evolved_ids := {}
+	var catalysts := {}
+
+	# Act / Assert — an evolution is content like any other but reached only
+	# through its base: never listed in the catalogue, never a duplicate id, and
+	# always a real step up with its own, higher ceiling.
+	for base in catalogue.weapons:
+		if base == null:
+			continue
+		assert_object(base.evolves_into).override_failure_message(
+			"weapon '%s' names its evolution" % base.id
+		).is_not_null()
+		if base.evolves_into == null:
+			continue
+		var evolved := base.evolves_into
+		assert_bool(evolved.id.is_empty()).override_failure_message(
+			"weapon '%s' evolves into an id'ed weapon" % base.id
+		).is_false()
+		assert_bool(evolved_ids.has(evolved.id)).override_failure_message(
+			"evolved id '%s' is unique" % evolved.id
+		).is_false()
+		evolved_ids[evolved.id] = true
+		assert_bool(base_ids.has(evolved.id)).override_failure_message(
+			"evolved weapon '%s' is never listed in Catalogue.weapons" % evolved.id
+		).is_false()
+		assert_bool(evolved.max_level > base.max_level).override_failure_message(
+			"weapon '%s' evolves into a higher cap" % base.id
+		).is_true()
+		var required := base.evolution_level_required()
+		assert_bool(required >= 1 and required <= maxi(base.max_level, 1)).override_failure_message(
+			"weapon '%s' evolves within its own levels" % base.id
+		).is_true()
+		assert_bool(evolved.has_known_mechanic()).override_failure_message(
+			"evolved weapon '%s' carries a known mechanic" % evolved.id
+		).is_true()
+		assert_str(evolved.mechanic).override_failure_message(
+			"evolved weapon '%s' keeps the rule of its base" % evolved.id
+		).is_equal(base.mechanic)
+		assert_bool(evolved.has_evolution()).override_failure_message(
+			"evolved weapon '%s' does not chain into a second evolution" % evolved.id
+		).is_false()
+		assert_str(evolved.name_key).is_equal("weapon.%s.name" % evolved.id)
+		assert_str(evolved.description_key).is_equal("weapon.%s.desc" % evolved.id)
+		if base.evolution_passive != &"":
+			catalysts[base.evolution_passive] = true
+
+	# Assert — lot 3's passives are the catalysts, so the two lots compose.
+	assert_bool(catalysts.has(&"rage")).override_failure_message(
+		"a rage piece catalyses an evolution"
+	).is_true()
+	assert_bool(catalysts.has(&"level_up_heal")).override_failure_message(
+		"a level-up heal piece catalyses an evolution"
+	).is_true()

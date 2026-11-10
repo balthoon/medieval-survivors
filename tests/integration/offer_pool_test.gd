@@ -8,6 +8,8 @@
 ## the two crit pieces are then dead choices, whatever the draw order. The pool
 ## is emptied on purpose in the fallback test, and the catalogue is replaced in
 ## the level-consumption test, so both target the guarantee rather than luck.
+## Both also spend the run's one evolution, so the weapon branch is closed
+## rather than merely quiet (lot 2).
 extends GdUnitTestSuite
 
 const MainSceneFixture := preload("res://tests/fixtures/main_scene_fixture.gd")
@@ -15,6 +17,24 @@ const MainSceneFixture := preload("res://tests/fixtures/main_scene_fixture.gd")
 ## Highest crit chance a hit can reach. Kept local so the suite fails on the
 ## behaviour, not on a constant moved in the production code.
 const CRIT_CAP := 0.75
+
+
+## Removes every weapon candidate from [param main]'s panel: each carried weapon
+## is held at its cap (lot 1) and the run's one evolution is spent (lot 2), with
+## its evolved form capped too. This is the loadout where the weapon branch can
+## build nothing, which is what the two fallback tests need.
+func _spend_weapon_candidates(main: Variant) -> void:
+	for carried in main._inventory.weapons:
+		if carried != null:
+			main._inventory.weapon_levels[carried.id] = maxi(carried.max_level, 1)
+	if main._inventory.weapons.is_empty():
+		return
+	var first: WeaponData = main._inventory.weapons[0]
+	if first == null or not main._inventory.evolve_weapon(first):
+		return
+	var evolved: WeaponData = first.evolves_into
+	if evolved != null:
+		main._inventory.weapon_levels[evolved.id] = maxi(evolved.max_level, 1)
 
 
 func test_capped_crit_upgrade_is_never_offered() -> void:
@@ -99,11 +119,9 @@ func test_empty_candidate_pool_falls_back_to_an_offer() -> void:
 	main._upgrades.clear()
 	main._weapon_pool.clear()
 	main._equipment_pool.clear()
-	# A carried weapon below its max level is a candidate by itself (lot 1), so
-	# cap every one of them: nothing at all must remain applicable.
-	for carried in main._inventory.weapons:
-		if carried != null:
-			main._inventory.weapon_levels[carried.id] = maxi(carried.max_level, 1)
+	# Nothing at all must remain applicable: the weapon branch is closed by the
+	# helper, and every other pool was just cleared.
+	_spend_weapon_candidates(main)
 
 	# Act
 	var offers: Array[Offer] = main._build_offers(3)
@@ -129,11 +147,8 @@ func test_level_is_not_consumed_when_no_offer_exists() -> void:
 	# Replace the catalogue and re-copy it: no upgrade, no fallback, no content.
 	main.catalogue = Catalogue.new()
 	main._load_data()
-	# A carried weapon below its max level is a candidate by itself (lot 1), so
-	# cap every one of them or the panel is never empty.
-	for carried in main._inventory.weapons:
-		if carried != null:
-			main._inventory.weapon_levels[carried.id] = maxi(carried.max_level, 1)
+	# The weapon branch is closed by the helper, or the panel is never empty.
+	_spend_weapon_candidates(main)
 	main.is_paused = false
 	main._dead = false
 	main._level = 1

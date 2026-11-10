@@ -1,0 +1,29 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "marteau_seisme"
+display_name = "Marteau du séisme"
+name_key = "weapon.marteau_seisme.name"
+description = "Le choc ébranle tout l'écran et repousse plus loin que le marteau de guerre."
+description_key = "weapon.marteau_seisme.desc"
+kind = "melee"
+shape = "hammer"
+mechanic = &"stagger"
+rarity = "legendaire"
+max_level = 7
+level_damage_step = 0.25
+level_cadence_step = 0.05
+level_range_step = 0.05
+damage = 38.0
+attacks_per_second = 0.76
+range_px = 92.0
+arc_degrees = 200.0
+swing_duration = 0.22
+crit_chance = 0.03
+crit_multiplier = 2.2
+knockback = 72.0
+color = Color(0.62, 0.36, 0.24, 1)
+stagger_seconds = 0.95

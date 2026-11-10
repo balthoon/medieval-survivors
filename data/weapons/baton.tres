@@ -1,6 +1,7 @@
-[gd_resource type="Resource" load_steps=2 format=3]
+[gd_resource type="Resource" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+[ext_resource type="Resource" path="res://data/weapons/evolved/baton_orage.tres" id="2_evolved"]
 
 [resource]
 script = ExtResource("1_script")
@@ -14,6 +15,9 @@ shape = "staff"
 mechanic = &"chain"
 rarity = "rare"
 max_level = 4
+evolves_into = ExtResource("2_evolved")
+evolution_level = 4
+evolution_passive = &"rage"
 level_damage_step = 0.25
 level_cadence_step = 0.05
 level_range_step = 0.05

@@ -20,3 +20,26 @@ equipment.rage_active,ACTIF,ACTIVE
 hud.level_up_heal_title,Montée de niveau · Soin +%d PV,Level up · Heal +%d HP
 end.victory.title,Victoire !,Victory!
 end.defeat.title,Mort au combat,Slain in battle
+offer.weapon_evolution,★ %s → %s,★ %s → %s
+offer.weapon_evolution_keeps,niv. %d conservé · max %d,lvl %d kept · max %d
+evolution.banner,ÉVOLUTION · %s,EVOLUTION · %s
+weapon.lame_serment.name,Lame du serment,Oathblade
+weapon.lame_serment.desc,Chaque coup tranche un arc plus large et frappe plus fort qu'une épée longue.,Each swing carves a wider arc and lands harder than a longsword.
+weapon.dague_ombre.name,Dague de l'ombre,Shadowfang
+weapon.dague_ombre.desc,Sous le seuil de rage la dague frappe plus vite et n'épargne plus les blessés.,Below the rage threshold the dagger strikes faster and stops sparing the wounded.
+weapon.marteau_seisme.name,Marteau du séisme,Quakemaul
+weapon.marteau_seisme.desc,Le choc ébranle tout l'écran et repousse plus loin que le marteau de guerre.,The blow shakes the screen and hurls further than a warhammer.
+weapon.arc_crepuscule.name,Arc du crépuscule,Duskbow
+weapon.arc_crepuscule.desc,Les flèches portent plus loin et frappent plus fort au bout de leur course.,Arrows fly further and hit harder at the end of their flight.
+weapon.faux_moisson.name,Faux des moissons,Harvest Reaper
+weapon.faux_moisson.desc,Un tour complet autour du joueur fauche tout ce qui approche.,One full turn around the player reaps everything that comes close.
+weapon.arbalete_siege.name,Arbalète de siège,Siege Crossbow
+weapon.arbalete_siege.desc,Le carreau traverse la horde presque sans perdre de sa force.,The bolt pierces the horde with almost no loss of force.
+weapon.baton_orage.name,Bâton des orages,Stormstaff
+weapon.baton_orage.desc,L'éclair rebondit sur un ennemi de plus et garde presque toute sa charge.,The bolt rebounds onto one more enemy and keeps almost all its charge.
+weapon.orbe_lunaire.name,Orbe lunaire,Lunar Orb
+weapon.orbe_lunaire.desc,L'orbe tourne plus vite et plus près et frappe sans relâche.,The orb spins faster and closer and hits without pause.
+weapon.encensoir_funeraire.name,Encensoir funéraire,Funerary Censer
+weapon.encensoir_funeraire.desc,L'encens brûle plus fort et son explosion embrase un cercle plus large.,The incense burns hotter and its blast sets a wider circle alight.
+weapon.lame_soif.name,Lame de la soif,Thirsting Blade
+weapon.lame_soif.desc,La lame boit plus profondément et rend une part plus large de chaque blessure.,The blade drinks deeper and returns a larger share of every wound.

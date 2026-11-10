@@ -50,6 +50,18 @@ extends Resource
 @export var hitstop_scale: float = 0.05
 ## Colour of the ring drawn when the level-up panel opens.
 @export var level_up_color: Color = Color(0.85, 0.65, 0.15)
+## Accent colour of a weapon evolution: the offer row's border and tint, the
+## ring drawn when it lands, and the feedback banner. One value so the whole
+## sequence reads as a single event.
+@export var evolution_color: Color = Color(0.42, 0.24, 0.62)
+## Sound id played the moment an evolution is taken. Resolved through [Sfx].
+@export var evolution_sound: String = "evolution"
+## Localisation key of the feedback banner shown after an evolution. Takes the
+## evolved weapon's name as its only argument.
+@export var evolution_banner_key: String = "evolution.banner"
+## Seconds the evolution banner stays on screen. The ring and the shake are
+## shorter; the banner is what names what just happened.
+@export var evolution_banner_seconds: float = 2.2
 ## Health multiplier granted to a boss per tier above the first.
 @export var boss_hp_per_tier: float = 0.9
 ## Damage multiplier granted to a boss per tier above the first.

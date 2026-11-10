@@ -312,13 +312,13 @@ Le pivot est donc toujours possible, toujours chiffrable, et jamais gratuit. C'e
 | `src/data/run_config.gd` | fournit | `rage_hp_threshold = 0,5`. | ce document |
 | `src/actors/player.gd` | fournit | `heal` plafonné à `stats.max_hp`. | existant |
 | `src/classes/offer.gd`, `src/ui/hud.gd` | consomme | Nommer l'ensemble à la complétion, afficher la progression « 1/2 » ou « 2/2 », rendre la rage visible sans couleur seule, afficher le soin réellement rendu. | offres / UI |
-| `design/gdd/weapons.md` | croisé | `M_niveau` et la règle de snapshot E19 pour le niveau et la ressource d'arme ; ce document ne modifie pas les armes. | systems-designer |
+| `design/gdd/weapons.md` | croisé | `M_niveau` et la règle de snapshot E19 pour le niveau et la ressource d'arme ; ce document ne modifie pas les armes. Les passifs `rage` et `level_up_heal` définis ici sont les deux catalyseurs d'évolution de `weapons.md` §3.10 : la dague et le bâton exigent `rage`, l'orbe et la lame vampire exigent `level_up_heal`. | systems-designer |
 | `design/gdd/classes.md` | croisé | Statistiques de base et signatures ; l'équipement s'ajoute après la classe ; aucune classe n'est exclue d'un ensemble. | game-designer |
 | `design/gdd/systems-index.md` | croisé | Doit lister ce document. | orchestrateur / game-designer |
 | `docs/localization-standard.md` | fournit | Clés `equipment.<id>.name`, `equipment.<id>.desc`, `equipment.set.<id>.name`, `equipment.passive.<id>`. | localization-lead (W8) |
 | W4 — boutique et prix | consomme | Si un prix par rareté apparaît, un ensemble se juge sur le prix de ses deux pièces, jamais sur un prix du bonus. | economy-designer |
 
-**Réciprocité.** `weapons.md` et `classes.md` sont écrits par d'autres agents et ne sont **pas** modifiés ici. Leurs propriétaires doivent citer `equipment.md` pour le multiplicateur de rage (appliqué après `damage_mult`, avant le critique) et pour les statistiques d'ensemble qui s'ajoutent aux leurs. `systems-index.md` référence ce document. Le bonus d'ensemble ne crée aucune dépendance circulaire : il lit `Catalogue.sets` et les pièces portées, et n'écrit rien.
+**Réciprocité.** `weapons.md` et `classes.md` sont écrits par d'autres agents et ne sont **pas** modifiés ici. Leurs propriétaires doivent citer `equipment.md` pour le multiplicateur de rage (appliqué après `damage_mult`, avant le critique) et pour les statistiques d'ensemble qui s'ajoutent aux leurs. `weapons.md` cite en retour les passifs `rage` et `level_up_heal` comme catalyseurs d'évolution (§3.10). `systems-index.md` référence ce document. Le bonus d'ensemble ne crée aucune dépendance circulaire : il lit `Catalogue.sets` et les pièces portées, et n'écrit rien.
 
 ## Tuning Knobs
 

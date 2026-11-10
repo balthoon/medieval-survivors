@@ -1,0 +1,28 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "faux_moisson"
+display_name = "Faux des moissons"
+name_key = "weapon.faux_moisson.name"
+description = "Un tour complet autour du joueur fauche tout ce qui approche."
+description_key = "weapon.faux_moisson.desc"
+kind = "melee"
+shape = "scythe"
+mechanic = &"whirl"
+rarity = "legendaire"
+max_level = 7
+level_damage_step = 0.25
+level_cadence_step = 0.05
+level_range_step = 0.05
+damage = 20.0
+attacks_per_second = 0.98
+range_px = 68.0
+arc_degrees = 360.0
+swing_duration = 0.28
+crit_chance = 0.04
+crit_multiplier = 2.0
+knockback = 24.0
+color = Color(0.42, 0.55, 0.32, 1)

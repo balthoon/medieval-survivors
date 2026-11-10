@@ -424,7 +424,10 @@ func _offer_choices(choices: Array[Offer], healed: float = 0.0, shows_heal: bool
 	if _sfx != null:
 		_sfx.play("level_up", -2.0)
 	_hud.show_upgrade_choices(
-		choices, _rerolls, _hud.level_up_title(int(round(healed)), shows_heal)
+		choices,
+		_rerolls,
+		_hud.level_up_title(int(round(healed)), shows_heal),
+		_config.evolution_color
 	)
 	_refresh_hud()
 
@@ -445,7 +448,9 @@ func _offer_boss_loot() -> void:
 	_pending_choices = choices
 	_boss_loot_open = true
 	is_paused = true
-	_hud.show_upgrade_choices(choices, _rerolls, _config.boss_loot_title)
+	_hud.show_upgrade_choices(
+		choices, _rerolls, _config.boss_loot_title, _config.evolution_color
+	)
 	_refresh_hud()
 
 
@@ -490,30 +495,38 @@ func _build_offers(
 		stat_offer.weight = maxf(upgrade.weight, 0.0)
 		candidates.append(stat_offer)
 
+	# An evolution ready this panel owns the panel's single weapon row (A2): no
+	# new weapon and no level is built while one waits, so nothing can compete
+	# with it.
+	var evolution := _evolution_offer()
 	var free_slots := _inventory.free_weapon_slots()
-	var new_weapon_offers: Array[Offer] = []
-	if free_slots > 0:
+	var weapon_offers: Array[Offer] = []
+	if evolution == null and free_slots > 0:
 		for weapon in _weapon_pool:
 			if weapon == null or _inventory.has_weapon(weapon):
+				continue
+			# Once a weapon evolved, its base leaves the pool for the rest of the
+			# run: re-offering it would undo the evolution.
+			if _inventory.has_evolved_from(weapon):
 				continue
 			var weapon_offer := Offer.for_weapon(weapon)
 			weapon_offer.weight = weapon_weight
 			_decorate_offer(weapon_offer)
-			new_weapon_offers.append(weapon_offer)
+			weapon_offers.append(weapon_offer)
 		# One acquisition per free slot at most: without the cap, a large
 		# catalogue would scale the weapon row's share of the pool with the number
 		# of weapons it happens to hold.
-		if new_weapon_offers.size() > free_slots:
-			_shuffle(new_weapon_offers)
-			new_weapon_offers.resize(free_slots)
-	var weapon_offers: Array[Offer] = new_weapon_offers
-	for weapon in _inventory.weapons:
-		if weapon == null or not _inventory.can_upgrade_weapon(weapon):
-			continue
-		var upgrade_offer := Offer.for_weapon_upgrade(weapon, _inventory.level_of(weapon) + 1)
-		upgrade_offer.weight = upgrade_weight
-		_decorate_offer(upgrade_offer)
-		weapon_offers.append(upgrade_offer)
+		if weapon_offers.size() > free_slots:
+			_shuffle(weapon_offers)
+			weapon_offers.resize(free_slots)
+	if evolution == null:
+		for weapon in _inventory.weapons:
+			if weapon == null or not _inventory.can_upgrade_weapon(weapon):
+				continue
+			var upgrade_offer := Offer.for_weapon_upgrade(weapon, _inventory.level_of(weapon) + 1)
+			upgrade_offer.weight = upgrade_weight
+			_decorate_offer(upgrade_offer)
+			weapon_offers.append(upgrade_offer)
 	# Every candidate carries its own weight into the draw; _pick_weighted drops
 	# the remaining weapon rows once one is picked, so a panel shows at most one
 	# (A2) without shrinking the weapon row's share of the pool to a single draw.
@@ -534,12 +547,40 @@ func _build_offers(
 		_decorate_offer(item_offer)
 		candidates.append(item_offer)
 
+	if evolution != null:
+		# The evolution is not a weighted candidate: it is the first row of the
+		# panel its condition unlocked, so the player never has to reroll to see
+		# it. The other rows are drawn normally from the remaining pool.
+		var rest := _without_weapon_rows(candidates)
+		if rest.is_empty():
+			var fallback := _fallback_offer()
+			if fallback != null:
+				rest.append(fallback)
+		var result: Array[Offer] = [evolution]
+		result.append_array(_pick_weighted(rest, maxi(count - 1, 0)))
+		return result
+
 	if candidates.is_empty():
 		var fallback := _fallback_offer()
 		if fallback != null:
 			candidates.append(fallback)
 
 	return _pick_weighted(candidates, count)
+
+
+## The evolution the player may take right now, or null when none is ready. At
+## most one can be: [method Inventory.evolution_ready] refuses every candidate
+## once a weapon has evolved, and one evolution per run is the rule.
+func _evolution_offer() -> Offer:
+	for weapon in _inventory.weapons:
+		if not _inventory.evolution_ready(weapon):
+			continue
+		var offer := Offer.for_weapon_evolution(
+			weapon, weapon.evolves_into, _inventory.level_of(weapon)
+		)
+		_decorate_offer(offer)
+		return offer
+	return null
 
 
 ## True when an offer touching [param stat] would change nothing. Crit chance is
@@ -585,6 +626,19 @@ func _decorate_offer(offer: Offer) -> void:
 			_write_weapon_description(offer, offer.weapon, 1)
 		"weapon_upgrade":
 			_write_weapon_description(offer, offer.weapon, offer.target_level, true)
+		"weapon_evolution":
+			if offer.evolved_weapon == null:
+				return
+			# The evolved weapon's numbers at the level the evolution keeps, then
+			# the level it keeps and the ceiling it opens: the row must say that
+			# nothing was lost, or the choice reads as a replacement instead of an
+			# upgrade.
+			_write_weapon_description(offer, offer.evolved_weapon, offer.target_level)
+			offer.description += " · " + Loc.format(
+				"offer.weapon_evolution_keeps",
+				"niv. %d conservé · max %d",
+				[offer.target_level, maxi(offer.evolved_weapon.max_level, 1)]
+			)
 		"equipment":
 			var item := offer.equipment
 			if item == null:
@@ -714,7 +768,11 @@ func _pick_weighted(pool: Array[Offer], count: int) -> Array[Offer]:
 		remaining.remove_at(chosen_index)
 		if chosen.kind == "equipment" and chosen.equipment != null:
 			remaining = _without_slot(remaining, chosen.equipment.slot)
-		elif chosen.kind == "weapon" or chosen.kind == "weapon_upgrade":
+		elif (
+			chosen.kind == "weapon"
+			or chosen.kind == "weapon_upgrade"
+			or chosen.kind == "weapon_evolution"
+		):
 			remaining = _without_weapon_rows(remaining)
 	return picked
 
@@ -730,11 +788,15 @@ func _without_slot(pool: Array[Offer], slot: String) -> Array[Offer]:
 
 
 ## Returns [param pool] without any other weapon row. A panel carries one weapon
-## row at most (A2), whether it is an acquisition or a level.
+## row at most (A2), whether it is an acquisition, a level or an evolution.
 func _without_weapon_rows(pool: Array[Offer]) -> Array[Offer]:
 	var kept: Array[Offer] = []
 	for offer in pool:
-		if offer.kind == "weapon" or offer.kind == "weapon_upgrade":
+		if (
+			offer.kind == "weapon"
+			or offer.kind == "weapon_upgrade"
+			or offer.kind == "weapon_evolution"
+		):
 			continue
 		kept.append(offer)
 	return kept
@@ -783,7 +845,7 @@ func _on_reroll_requested() -> void:
 		return
 	_pending_choices = choices
 	var title := _config.boss_loot_title if _boss_loot_open else HUD.LEVEL_UP_TITLE
-	_hud.show_upgrade_choices(choices, _rerolls, title)
+	_hud.show_upgrade_choices(choices, _rerolls, title, _config.evolution_color)
 
 
 ## Applies one choice, whatever its kind.
@@ -793,6 +855,8 @@ func _apply_offer(offer: Offer) -> void:
 			_gain_weapon(offer.weapon)
 		"weapon_upgrade":
 			_upgrade_weapon(offer.weapon)
+		"weapon_evolution":
+			_evolve_weapon(offer)
 		"equipment":
 			_gain_equipment(offer.equipment)
 		_:
@@ -825,6 +889,33 @@ func _upgrade_weapon(weapon: WeaponData) -> void:
 	if not _inventory.upgrade_weapon(weapon):
 		return
 	_weapon_system.refresh()
+
+
+## Takes the evolution carried by [param offer]. The evolved weapon replaces the
+## base in the same slot and keeps the level reached, so the moment must read as
+## a reward and not as a swap: a ring in the evolution colour, a dedicated sound
+## and a banner naming the weapon. All three are wired to [RunConfig] so the
+## feedback is tuned in data, like every other effect of a run.
+func _evolve_weapon(offer: Offer) -> void:
+	if offer == null or offer.weapon == null or offer.evolved_weapon == null:
+		return
+	if not _inventory.evolve_weapon(offer.weapon):
+		return
+	_weapon_system.refresh()
+	if _fx != null:
+		add_child(RingBurst.create(_player.position, _config.evolution_color))
+	if _sfx != null:
+		_sfx.play(_config.evolution_sound, -1.0)
+	if _hud != null:
+		_hud.show_evolution_banner(
+			Loc.format(
+				_config.evolution_banner_key,
+				"ÉVOLUTION · %s",
+				[offer.evolved_weapon.display_name]
+			),
+			_config.evolution_color,
+			_config.evolution_banner_seconds
+		)
 
 
 ## Equips an item and rebuilds the stats on top of the base ones.

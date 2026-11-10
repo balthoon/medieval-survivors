@@ -28,6 +28,9 @@ const BOSS_BAR_WIDTH := 560.0
 const BOSS_BAR_HEIGHT := 24.0
 ## Title shown on the level-up panel.
 const LEVEL_UP_TITLE := "Montée de niveau"
+## Accent colour of a weapon evolution, used when the caller passes none. The
+## run's own value comes from [member RunConfig.evolution_color].
+const EVOLUTION_COLOR := Color(0.42, 0.24, 0.62)
 ## Seconds the red damage flash takes to fade out.
 const DAMAGE_FLASH_TIME := 0.25
 ## Starting alpha of the red damage flash.
@@ -51,6 +54,9 @@ const _SLOT_TITLES := {
 
 var _options: Array[Button] = []
 var _desc_labels: Array[Label] = []
+## Style boxes the scene gives each option, captured in _ready() so a row
+## restyled as an evolution is restored to the ordinary look on the next panel.
+var _option_base_styles: Array[Dictionary] = []
 var _choice_count := 0
 var _accepting := false
 
@@ -97,6 +103,10 @@ func _ready() -> void:
 	_desc_labels = [$UpgradePanel/Desc0, $UpgradePanel/Desc1, $UpgradePanel/Desc2]
 	for index in _options.size():
 		_options[index].pressed.connect(_on_option_pressed.bind(index))
+		var styles := {}
+		for state in ["normal", "hover", "pressed", "focus"]:
+			styles[state] = _options[index].get_theme_stylebox(state)
+		_option_base_styles.append(styles)
 
 	_weapon_labels = [$Weapon0Label, $Weapon1Label, $Weapon2Label]
 	_weapon_statuses = [$Weapon0Status, $Weapon1Status, $Weapon2Status]
@@ -247,12 +257,26 @@ func level_up_title(healed: int, shows_heal: bool) -> String:
 ## Shows the large wave banner and restarts its fade timer. [param suffix] is
 ## appended after the wave number — a boss wave passes its boss line.
 func show_wave_banner(wave_index: int, suffix: String = "") -> void:
+	# A wave banner always looks like a wave banner: drop the colour an evolution
+	# banner may have left on the shared label.
+	_wave_banner.remove_theme_color_override("font_color")
 	_wave_banner.text = "VAGUE %d" % (wave_index + 1)
 	if not suffix.is_empty():
 		_wave_banner.text += " · " + suffix
 	_wave_banner.visible = true
 	_wave_banner.modulate.a = 1.0
 	_banner_time = BANNER_TIME
+
+
+## Shows the large banner in [param color] for [param seconds]. Same label as the
+## wave banner: a reward that lands mid-wave gets the biggest text the HUD has.
+## [method show_wave_banner] clears the colour before the next wave.
+func show_evolution_banner(text: String, color: Color, seconds: float) -> void:
+	_wave_banner.text = text
+	_wave_banner.add_theme_color_override("font_color", color)
+	_wave_banner.visible = true
+	_wave_banner.modulate.a = 1.0
+	_banner_time = maxf(seconds, 0.1)
 
 
 ## Shows the boss health bar under its name, full.
@@ -323,15 +347,21 @@ func panel_open() -> bool:
 ## Fills the three buttons from the given offers and shows the panel.
 ## Buttons must also respond to keys 1 2 3, to R for a reroll, and to gamepad
 ## focus + ui_accept. [param title] lets the caller label a boss-loot panel
-## without a second panel scene.
+## without a second panel scene. [param evolution_color] is the accent a
+## weapon-evolution row is drawn in; every other row keeps the scene's look.
 func show_upgrade_choices(
-	choices: Array[Offer], rerolls: int, title: String = LEVEL_UP_TITLE
+	choices: Array[Offer],
+	rerolls: int,
+	title: String = LEVEL_UP_TITLE,
+	evolution_color: Color = EVOLUTION_COLOR
 ) -> void:
 	_panel_title.text = title
 	_choice_count = mini(choices.size(), _options.size())
 	for index in _options.size():
 		var button := _options[index]
 		var desc := _desc_labels[index]
+		var is_evolution := index < _choice_count and choices[index].kind == "weapon_evolution"
+		_style_option(index, is_evolution, evolution_color)
 		if index < _choice_count:
 			var offer: Offer = choices[index]
 			button.text = "%d. %s" % [index + 1, offer.title]
@@ -368,6 +398,48 @@ func hide_upgrade_choices() -> void:
 	_upgrade_panel.visible = false
 	for button in _options:
 		button.release_focus()
+
+
+## Restyles one panel row. An ordinary row gets the scene's own style boxes back;
+## an evolution row gets a background tinted toward the accent and an accent
+## border, so it is recognisable before its title is read. Every row is restyled
+## each time the panel opens, so an override cannot leak to the next panel.
+func _style_option(index: int, is_evolution: bool, accent: Color) -> void:
+	if index < 0 or index >= _options.size() or index >= _option_base_styles.size():
+		return
+	var button := _options[index]
+	var base: Dictionary = _option_base_styles[index]
+	for state in ["normal", "hover", "pressed", "focus"]:
+		button.add_theme_stylebox_override(state, base[state])
+	if not is_evolution:
+		return
+	var normal := base["normal"] as StyleBoxFlat
+	var parchment := Color(0.878, 0.847, 0.769) if normal == null else normal.bg_color
+	button.add_theme_stylebox_override(
+		"normal", _evolution_style(parchment.lerp(accent, 0.20), accent, 3)
+	)
+	button.add_theme_stylebox_override(
+		"hover", _evolution_style(parchment.lerp(accent, 0.28), accent, 3)
+	)
+	button.add_theme_stylebox_override(
+		"pressed", _evolution_style(parchment.lerp(accent, 0.36), accent, 3)
+	)
+	var focus := _evolution_style(Color(0.0, 0.0, 0.0, 0.0), accent.lightened(0.18), 4)
+	focus.draw_center = false
+	button.add_theme_stylebox_override("focus", focus)
+
+
+## A panel-row style box shaped like the scene's: [param background] fill, a
+## [param border] of [param width] pixels, and the same content margins.
+static func _evolution_style(background: Color, border: Color, width: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = background
+	style.border_color = border
+	style.set_border_width_all(width)
+	style.set_content_margin_all(8.0)
+	style.content_margin_left = 12.0
+	style.content_margin_right = 12.0
+	return style
 
 
 ## Emits the choice for a completed press, once per press. Ignored when the

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "arc_crepuscule"
+display_name = "Arc du crépuscule"
+name_key = "weapon.arc_crepuscule.name"
+description = "Les flèches portent plus loin et frappent plus fort au bout de leur course."
+description_key = "weapon.arc_crepuscule.desc"
+kind = "projectile"
+shape = "blade"
+mechanic = &"distance"
+rarity = "legendaire"
+max_level = 7
+level_damage_step = 0.25
+level_cadence_step = 0.05
+level_range_step = 0.05
+damage = 13.0
+attacks_per_second = 1.35
+range_px = 400.0
+arc_degrees = 0.0
+swing_duration = 0.12
+crit_chance = 0.08
+crit_multiplier = 2.0
+knockback = 14.0
+projectile_speed = 700.0
+color = Color(0.78, 0.45, 0.28, 1)
+distance_damage_bonus = 0.75

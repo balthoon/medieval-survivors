@@ -46,8 +46,24 @@ const MECHANICS := [
 ## price (one of the three weapon slots); rarity must never become a power tier.
 @export var rarity: String = "commun"
 ## Highest level this weapon can reach. A weapon at this level leaves the
-## upgrade draw, so a panel never wastes a row on a capped weapon.
+## upgrade draw, so a panel never wastes a row on a capped weapon. An evolved
+## weapon carries its own, higher cap: evolution preserves the level reached
+## and opens the remaining progression above the base weapon's ceiling.
 @export var max_level: int = 4
+## Weapon this one evolves into, or null when it has no evolution. The evolved
+## weapon is content like any other — its own `.tres` — but it is never listed
+## in [member Catalogue.weapons]: the only way to reach it is this reference.
+## A run allows one evolution in total (see [method Inventory.evolve_weapon]).
+@export var evolves_into: WeaponData = null
+## Level this weapon must reach before its evolution can be offered. Zero means
+## its own [member max_level], which is the default shape: a weapon evolves at
+## the cap. A positive value below the cap lets an evolution unlock earlier.
+@export var evolution_level: int = 0
+## Optional equipment passive the player must carry for the evolution, matched
+## against [member EquipmentData.passive_id]. Empty means the weapon's level is
+## the only condition. The passive is a catalyst, not a cost: wearing the piece
+## is enough, and the piece stays equipped.
+@export var evolution_passive: StringName = &""
 ## Fraction of the base damage added per level above the first. Level 2 with
 ## 0.25 deals x1.25 the level-1 damage; level 4 deals x1.75. The step is
 ## additive on the base stat, then the player's global multipliers apply (see
@@ -118,3 +134,18 @@ const MECHANICS := [
 ## to "cleave" with a warning when this is false.
 func has_known_mechanic() -> bool:
 	return MECHANICS.has(mechanic)
+
+
+## True when this weapon names an evolution target. A target with an empty id is
+## treated as absent: it could never be carried or looked up.
+func has_evolution() -> bool:
+	return evolves_into != null and not evolves_into.id.is_empty()
+
+
+## Level this weapon must reach for its evolution to unlock. An explicit
+## positive [member evolution_level] wins; zero falls back to the weapon's own
+## [member max_level].
+func evolution_level_required() -> int:
+	if evolution_level > 0:
+		return evolution_level
+	return maxi(max_level, 1)

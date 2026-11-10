@@ -6,9 +6,9 @@ deterministic: each sound draws from a Random instance with a fixed seed, so
 rerunning it always produces byte-identical files.
 
 Output: assets/audio/sfx/*.wav -- 44100 Hz, mono, 16-bit PCM, normalised to
-0.8 peak with a 5 ms fade in and fade out against clicks. The six combat sounds
-stay under 0.30 s; the two boss sounds are longer (0.55 s and 0.75 s) because a
-boss needs a tell, not a click.
+0.8 peak with a 5 ms fade in and fade out against clicks. The combat sounds stay
+under 0.30 s; the two boss sounds and the evolution fanfare are longer (0.55 s
+and 0.75 s) because a boss or a reward needs a tell, not a click.
 
 Usage (from the repository root):
 
@@ -193,6 +193,43 @@ def _level_up(rng):
     return samples
 
 
+def _evolution(rng):
+    """0.55 s -- four ascending notes 392, 523, 784 and 1047 Hz, each doubled by
+    an octave shimmer, over a high-passed sparkle. Longer and brighter than the
+    level-up arpeggio: an evolution is the biggest thing a run can award."""
+    duration = 0.55
+    notes = (392.0, 523.25, 783.99, 1046.5)
+    segment = duration / len(notes)
+    attack = 0.010
+    samples = [0.0] * _length(duration)
+    for note_index, frequency in enumerate(notes):
+        start_sample = int(round(note_index * segment * SAMPLE_RATE))
+        # Each note rings past its slot, then the next one joins on top.
+        note_length = segment + 0.10
+        for offset in range(_length(note_length)):
+            position = start_sample + offset
+            if position >= len(samples):
+                break
+            local = offset / SAMPLE_RATE
+            if local < attack:
+                envelope = local / attack
+            else:
+                envelope = math.exp(-(local - attack) / 0.090)
+            tone = math.sin(2.0 * math.pi * frequency * local)
+            shimmer = math.sin(2.0 * math.pi * frequency * 2.0 * local) * 0.32
+            samples[position] += (tone + shimmer) * envelope * 0.45
+    # Sparkle: a high-passed noise tail, quiet enough to sit under the notes and
+    # bright enough to read as magic rather than hiss.
+    previous_noise = 0.0
+    for index in range(len(samples)):
+        t = index / SAMPLE_RATE
+        noise = rng.uniform(-1.0, 1.0)
+        sparkle = (noise - previous_noise) * 0.10 * math.exp(-t / 0.16)
+        previous_noise = noise
+        samples[index] += sparkle
+    return samples
+
+
 def _boss_roar(rng):
     """0.75 s -- a low growl announcing the boss: 70 Hz saw sinking to 46 Hz,
     plus a slow noise breath and a sub octave. Slow attack, so it swells."""
@@ -250,6 +287,7 @@ _BUILDERS = (
     ("level_up.wav", _level_up),
     ("boss_roar.wav", _boss_roar),
     ("boss_slam.wav", _boss_slam),
+    ("evolution.wav", _evolution),
 )
 
 

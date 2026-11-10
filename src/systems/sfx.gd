@@ -1,10 +1,10 @@
 ## Plays the slice's sound effects from a fixed pool of players on a "SFX" bus.
 ##
 ## The bus is created on demand in [method _ready], with a limiter so stacked
-## hits cannot clip. All twelve [AudioStreamPlayer]s are built once at startup
-## and reused for every play; nothing is instantiated during gameplay.
-## The six streams are loaded from [code]res://assets/audio/sfx/[/code] and
-## stay silent when a file is missing, so the game still runs without audio.
+## hits cannot clip. Every [AudioStreamPlayer] is built once at startup and
+## reused for every play; nothing is instantiated during gameplay. The streams
+## are loaded from [code]res://assets/audio/sfx/[/code] and stay silent when a
+## file is missing, so the game still runs without audio.
 class_name Sfx
 extends Node
 
@@ -25,6 +25,7 @@ const _SOUND_PATHS := {
 	"enemy_death": "res://assets/audio/sfx/enemy_death.wav",
 	"player_hurt": "res://assets/audio/sfx/player_hurt.wav",
 	"level_up": "res://assets/audio/sfx/level_up.wav",
+	"evolution": "res://assets/audio/sfx/evolution.wav",
 	"boss_roar": "res://assets/audio/sfx/boss_roar.wav",
 	"boss_slam": "res://assets/audio/sfx/boss_slam.wav",
 }

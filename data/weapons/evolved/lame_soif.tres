@@ -1,0 +1,29 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "lame_soif"
+display_name = "Lame de la soif"
+name_key = "weapon.lame_soif.name"
+description = "La lame boit plus profondément et rend une part plus large de chaque blessure."
+description_key = "weapon.lame_soif.desc"
+kind = "melee"
+shape = "blade"
+mechanic = &"lifesteal"
+rarity = "legendaire"
+max_level = 7
+level_damage_step = 0.25
+level_cadence_step = 0.05
+level_range_step = 0.05
+damage = 16.0
+attacks_per_second = 1.62
+range_px = 64.0
+arc_degrees = 95.0
+swing_duration = 0.11
+crit_chance = 0.06
+crit_multiplier = 2.0
+knockback = 20.0
+color = Color(0.62, 0.16, 0.2, 1)
+lifesteal_ratio = 0.35

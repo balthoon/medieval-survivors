@@ -1,0 +1,30 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "arbalete_siege"
+display_name = "Arbalète de siège"
+name_key = "weapon.arbalete_siege.name"
+description = "Le carreau traverse la horde presque sans perdre de sa force."
+description_key = "weapon.arbalete_siege.desc"
+kind = "projectile"
+shape = "crossbow"
+mechanic = &"pierce"
+rarity = "legendaire"
+max_level = 7
+level_damage_step = 0.25
+level_cadence_step = 0.05
+level_range_step = 0.05
+damage = 28.0
+attacks_per_second = 0.86
+range_px = 460.0
+arc_degrees = 0.0
+swing_duration = 0.0
+crit_chance = 0.06
+crit_multiplier = 2.2
+knockback = 18.0
+projectile_speed = 900.0
+color = Color(0.4, 0.46, 0.55, 1)
+pierce_falloff = 0.93

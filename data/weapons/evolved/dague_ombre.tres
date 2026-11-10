@@ -1,0 +1,29 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "dague_ombre"
+display_name = "Dague de l'ombre"
+name_key = "weapon.dague_ombre.name"
+description = "Sous le seuil de rage la dague frappe plus vite et n'épargne plus les blessés."
+description_key = "weapon.dague_ombre.desc"
+kind = "melee"
+shape = "blade"
+mechanic = &"execution"
+rarity = "legendaire"
+max_level = 7
+level_damage_step = 0.25
+level_cadence_step = 0.05
+level_range_step = 0.05
+damage = 10.5
+attacks_per_second = 3.1
+range_px = 46.0
+arc_degrees = 70.0
+swing_duration = 0.07
+crit_chance = 0.14
+crit_multiplier = 2.0
+knockback = 16.0
+color = Color(0.35, 0.22, 0.45, 1)
+execution_floor = 0.11

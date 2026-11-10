@@ -22,6 +22,11 @@ var equipment: Dictionary = {}
 ## state. Using the id rather than the resource instance keeps the lookup
 ## stable when a duplicate .tres carries the same weapon.
 var weapon_levels: Dictionary = {}
+## Id of the base weapon that took its evolution this run, or empty while none
+## has. One evolution per run: every other candidate is refused while this is
+## set, and the base stays out of the acquisition pool because its evolved form
+## is in the slot.
+var evolved_weapon_id: String = ""
 
 
 ## Fills the inventory with the class's starting weapon. Call once at run start.
@@ -29,6 +34,7 @@ func setup_starting(weapon: WeaponData) -> void:
 	weapons.clear()
 	equipment.clear()
 	weapon_levels.clear()
+	evolved_weapon_id = ""
 	add_weapon(weapon)
 
 
@@ -157,3 +163,50 @@ func passive_total(passive_id: StringName) -> float:
 		if item != null and item.passive_id == passive_id:
 			total += item.passive_value
 	return total
+
+
+## True when [param weapon] may take its evolution right now: it is carried, it
+## names an evolution, no other weapon has evolved yet this run, it has reached
+## [method WeaponData.evolution_level_required], and — when the weapon names a
+## catalyst — the player wears at least one piece carrying that passive. The
+## catalyst is read from what is equipped now, so removing the piece before the
+## panel opens withdraws the offer.
+func evolution_ready(weapon: WeaponData) -> bool:
+	if weapon == null or not has_weapon(weapon) or not weapon.has_evolution():
+		return false
+	if not evolved_weapon_id.is_empty():
+		return false
+	if level_of(weapon) < weapon.evolution_level_required():
+		return false
+	if weapon.evolution_passive != &"" and passive_total(weapon.evolution_passive) <= 0.0:
+		return false
+	return true
+
+
+## Replaces carried [param weapon] with its evolution, keeping the level reached
+## and moving the level entry to the evolved weapon's id. Returns false — and
+## changes nothing — when [method evolution_ready] is false, so a panel built
+## before the state moved cannot evolve twice or bypass a condition.
+func evolve_weapon(weapon: WeaponData) -> bool:
+	if not evolution_ready(weapon):
+		return false
+	var index := -1
+	for i in weapons.size():
+		if weapons[i] != null and weapons[i].id == weapon.id:
+			index = i
+			break
+	if index < 0:
+		return false
+	var kept_level := level_of(weapon)
+	var evolved := weapon.evolves_into
+	weapon_levels.erase(weapon.id)
+	weapons[index] = evolved
+	weapon_levels[evolved.id] = kept_level
+	evolved_weapon_id = weapon.id
+	return true
+
+
+## True when [param weapon] is the base weapon that already evolved this run.
+## The offer builder reads it to keep that base out of the acquisition pool.
+func has_evolved_from(weapon: WeaponData) -> bool:
+	return weapon != null and not evolved_weapon_id.is_empty() and weapon.id == evolved_weapon_id

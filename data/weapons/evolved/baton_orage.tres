@@ -1,0 +1,31 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "baton_orage"
+display_name = "Bâton des orages"
+name_key = "weapon.baton_orage.name"
+description = "L'éclair rebondit sur un ennemi de plus et garde presque toute sa charge."
+description_key = "weapon.baton_orage.desc"
+kind = "melee"
+shape = "staff"
+mechanic = &"chain"
+rarity = "legendaire"
+max_level = 7
+level_damage_step = 0.25
+level_cadence_step = 0.05
+level_range_step = 0.05
+damage = 15.0
+attacks_per_second = 1.2
+range_px = 82.0
+arc_degrees = 40.0
+swing_duration = 0.14
+crit_chance = 0.05
+crit_multiplier = 2.0
+knockback = 12.0
+color = Color(0.45, 0.42, 0.72, 1)
+chain_jumps = 3
+chain_jump_radius = 110.0
+chain_falloff = 0.85

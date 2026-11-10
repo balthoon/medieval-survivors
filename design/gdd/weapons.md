@@ -1,9 +1,9 @@
 # Armes — Medieval Survivors
 
-> **Statut** : Designed (W2-E1) — contrat de données et spécification ; les mécaniques sont implémentées en W2-E2.
+> **Statut** : Designed (W2-E1) — contrat de données et spécification ; les mécaniques sont implémentées en W2-E2. Lot 2 du plan roguelite (évolutions) : §3.10, F14, E26–E33, AC17–AC21.
 > **Auteur** : systems-designer
-> **Dernière mise à jour** : 2026-11-09
-> **Dernière vérification** : 2026-11-09
+> **Dernière mise à jour** : 2026-11-10
+> **Dernière vérification** : 2026-11-10
 > **Pilier servi** : pilier 1 « chaque run est différent » et pilier 3 « le joueur a toujours un choix qui compte » ; la matrice de la §3.7 sert le pilier 2.
 > **Référence rapide** — Couche : Core · Priorité : P0 (W2) · Dépend de : `WeaponData`, `Stats`, `Inventory`, `EnemyData`, `Offer`, `RunConfig`, comportements W1 · Est dépendu par : W2-E2, W2-E3, W2-E4, W3-E1, W4, W8.
 
@@ -25,6 +25,7 @@ Les quatre armes existantes gardent leur fantasy et gagnent une règle lisible :
 - Toutes les armes partagent les **trois emplacements** de `Inventory.MAX_WEAPONS = 3`. Aucune arme n'a de slot propre. Une arme occupe un emplacement jusqu'à la fin de la run ; le level-up ne remplace pas une arme (voir §3.8).
 - Une arme déjà portée n'est jamais reproposée **en acquisition** : `Inventory.has_weapon` compare par `id`. Deux armes identiques ne peuvent pas être portées. En revanche, une arme portée sous son niveau maximum est reproposée comme **niveau** (`weapon_upgrade`, lot 1) : c'est la même arme qui monte, pas une seconde copie.
 - La **mécanique est la règle** ; `kind` (`melee` / `projectile`) et `shape` (dessin) restent des détails de résolution et de présentation. Une arme peut être mêlée et avoir une mécanique à distance (bâton en chaîne), ou projectile et ne pas infliger de dégâts à l'impact (encensoir).
+- Une arme peut **évoluer une fois par run** (§3.10) : au niveau déclaré, et si un passif d'équipement requis est porté, une offre dédiée remplace sa ligne d'arme ; la forme évoluée prend l'emplacement en gardant le niveau atteint et ouvre son propre plafond. Les dix formes évoluées sont du contenu à part : elles ne sont **jamais** listées en acquisition et ne s'atteignent que par `evolves_into`.
 - Les valeurs de combat restent dans les `.tres` ; aucun nombre de ce document ne vit dans un script.
 
 ### 3.2 Le champ `mechanic` : jeton `StringName`, et pourquoi
@@ -229,6 +230,33 @@ Chaque case commence par un verdict — **Très fort** > **Fort** > **Moyen** > 
 | Les quatre `.tres` existants tagués (`mechanic`, clés, champs de mécanique), **valeurs numériques inchangées**. | Textes d'offre nommant la mécanique (`Offer.for_weapon`, `_decorate_offer`) : W2-E2. |
 | Ce GDD, matrice et formules. | Silhouettes et couleurs définitives : W2-E3. |
 | Aucun test ajouté ; la suite reste à 58 tests / 11 suites. | Un test par mécanique, trois runs / trois builds, matrice de non-domination : W2-E4. |
+
+### 3.10 Évolutions (lot 2)
+
+Une évolution est **un palier de contenu, pas un niveau de plus**. Chaque arme de base porte une `WeaponData` évoluée (`evolves_into`), un niveau requis (`evolution_level`, 0 signifiant « son propre `max_level` ») et, pour quatre d'entre elles, un passif d'équipement catalyseur (`evolution_passive`). Quand la condition est remplie, la ligne d'arme du panneau devient l'**offre d'évolution** : elle est la première ligne, peinte avec l'accent `RunConfig.evolution_color`, et elle occupe la seule ligne d'arme du panneau (A2). Elle n'est pas un candidat pondéré : elle ne peut être noyée par le tirage ni par un reroll.
+
+**Condition déclarative.** `Inventory.evolution_ready(w)` exige quatre choses : l'arme est portée, elle a une évolution, le niveau courant atteint `evolution_level_required()`, et — si `evolution_passive` n'est pas vide — `passive_total()` du passif est strictement positif. L'évolution est **une par run** : dès qu'une arme a évolué, `Inventory.evolved_weapon_id` nomme sa base et refuse toutes les autres candidates.
+
+**Ce que l'évolution fait.** `Inventory.evolve_weapon(w)` déplace l'emplacement vers la forme évoluée, **conserve le niveau atteint** (le niveau est réécrit sous l'`id` évolué, l'entrée de la base disparaît) et marque la base comme dépensée. La forme évoluée a son propre `max_level` — 7 dans les données actuelles pour une base plafonnée à 4 — donc une évolution prise au niveau 4 laisse trois niveaux à gagner. `WeaponSystem.refresh()` reconstruit les vues et les orbes en conservant les cooldowns restants : évoluer ne donne pas de coup gratuit. Les valeurs de la forme évoluée sont les siennes ; la mécanique est celle de la base.
+
+**Ce que l'offre montre.** Titre `★ <base> → <évoluée>` ; description = texte de `weapon.<id>.desc` de la forme évoluée, nombres effectifs **au niveau conservé**, puis `niv. N conservé · max M`. Les clés vivent dans `strings.csv` (`offer.weapon_evolution`, `offer.weapon_evolution_keeps`, `evolution.banner`, `weapon.<id>.name/.desc`) ; aucun texte n'est écrit dans un script.
+
+**Retour au joueur.** À l'acceptation : un `RingBurst` de la couleur d'évolution, `RunConfig.evolution_sound` (`evolution.wav`), et un bandeau HUD `ÉVOLUTION · <nom>` pendant `evolution_banner_seconds` (2,2 s), teinté de la couleur d'évolution. Le bandeau réutilise le label des vagues ; `show_wave_banner` efface l'override de couleur, donc une vague suivante reste dorée.
+
+| Base | Forme évoluée | Catalyseur |
+|---|---|---|
+| `epee_longue` | `lame_serment` | — |
+| `dague` | `dague_ombre` | `rage` |
+| `marteau` | `marteau_seisme` | — |
+| `arc_court` | `arc_crepuscule` | — |
+| `faux` | `faux_moisson` | — |
+| `arbalete` | `arbalete_siege` | — |
+| `baton` | `baton_orage` | `rage` |
+| `orbe` | `orbe_lunaire` | `level_up_heal` |
+| `encensoir` | `encensoir_funeraire` | — |
+| `lame_vampire` | `lame_soif` | `level_up_heal` |
+
+Les valeurs des dix formes évoluées vivent dans `data/weapons/evolved/*.tres` ; le tableau fixe l'appariement et les catalyseurs, pas les chiffres. Aucune arme évoluée n'entre dans `Catalogue.weapons` : leur `id` non vide et leur unicité sont vérifiés par le test de données, pas par le pool.
 
 ## Formulas
 
@@ -523,6 +551,34 @@ P_1(arme) = W_weapon / W_total
 
 **Exemple chiffré** — Départ de run, épée en main, deux slots libres : `P_1(arme) = (2 × 1,4 + 1 × 1,4) / 15,761 = 0,266`. Après trois armes portées, toutes montables : `(0 + 3 × 1,4) / 15,761 = 0,266`. Trois armes dont une au max : `2,8 / 14,361 = 0,195`. Toutes au max : `W_weapon = 0`, `P_1(arme) = 0`.
 
+### F14 — Condition et niveau d'une évolution
+
+**Expression**
+
+```text
+L_req(w)  = w.evolution_level           si w.evolution_level > 0
+          = w.max_level                 sinon
+prête(w)  = w.evolves_into ≠ null
+          ∧ level(w) ≥ L_req(w)
+          ∧ (w.evolution_passive = ∅ ∨ passive_total(w.evolution_passive) > 0)
+          ∧ evolved_weapon_id = ∅
+level'(w') = level(w)                   ← niveau conservé, entrée de base effacée
+niveau_max' = w.evolves_into.max_level
+```
+
+| Symbole | Type | Plage | Description |
+|---|---|---|---|
+| `w.evolution_level` | int | 0 ou 2–4 | Niveau requis déclaré ; 0 délègue au plafond de la base. |
+| `L_req(w)` | int | 1–4 | Niveau effectivement requis. |
+| `w.evolution_passive` | `StringName` | `&""`, `rage`, `level_up_heal` | Catalyseur optionnel, comparé au total des passifs portés. |
+| `evolved_weapon_id` | String | "" ou un `id` de base | Marqueur de run : non vide = l'unique évolution a été prise. |
+| `level'(w')` | int | 1–7 | Niveau de la forme évoluée après l'échange. |
+| `niveau_max'` | int | 5–10 | Plafond propre de la forme évoluée (7 dans les données actuelles). |
+
+**Plage de sortie** — `prête` est un booléen. `level'` est au moins `L_req` et ne peut jamais dépasser la base : une évolution prise au niveau 4 sur un plafond évolué de 7 laisse exactement trois pas. Aucune valeur négative : `L_req ≥ 1` et `level(w) ≥ 1` par `Inventory.level_of`.
+
+**Exemple chiffré** — Épée longue portée au niveau 4 (`L_req = 4`, sans catalyseur) : `prête = vrai` ; après l'échange, `level'(lame_serment) = 4`, `niveau_max' = 7`. Dague au niveau 4 sans anneau de rubis : `passive_total(&"rage") = 0`, donc `prête = faux` ; avec l'anneau, `prête = vrai`. Une deuxième arme sous la même condition reste `prête = faux` tant que `evolved_weapon_id` n'est pas vide.
+
 ### Tableau 4.14 — DPS de référence à stats de base
 
 | Arme | `E[D_hit]` | DPS cible unique | Condition de pointe | DPS de pointe |
@@ -571,12 +627,20 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | E23 | **Un niveau est choisi pendant que l'arme frappe.** | Le coup déjà parti garde les dégâts calculés à son niveau de tir (E19) ; le niveau suivant s'applique au coup suivant. Le cooldown en cours n'est pas remis à zéro : monter une arme ne donne pas de coup gratuit. |
 | E24 | **Une arme est remplacée.** | `Inventory.replace_weapon` oublie le niveau de l'arme sortante ; la nouvelle entre au niveau 1. Le niveau appartient à l'arme, pas à l'emplacement. |
 | E25 | **Une nouvelle run démarre.** | `Inventory.setup_starting` vide `weapon_levels` : aucun niveau ne survit d'une run à l'autre, puisque la `WeaponData` est partagée. |
+| E26 | **Deux armes portées remplissent leur condition d'évolution.** | Une seule évolution par run : `_evolution_offer` en choisit au plus une, et `Inventory.evolve_weapon` refuse toute seconde tentative tant que `evolved_weapon_id` n'est pas vide. La seconde arme retrouve son offre au panneau suivant d'une run ultérieure, jamais dans celle-ci. |
+| E27 | **La base d'une arme déjà évoluée retombe dans le pool d'acquisition.** | Elle n'est jamais reproposée : `_build_offers` écarte toute arme pour laquelle `Inventory.has_evolved_from` est vrai. La reproposer annulerait l'évolution ; une arme acquise ne peut donc évoluer que si sa base est portée au niveau requis. |
+| E28 | **Un reroll est demandé sur un panneau qui porte une évolution.** | Le panneau reconstruit replace l'évolution en première ligne et décore le reste normalement. Le reroll ne consomme pas l'évolution : le compteur est débité, `evolved_weapon_id` reste vide jusqu'au choix effectif. |
+| E29 | **La condition tombe entre l'ouverture du panneau et le choix.** | `Inventory.evolve_weapon` revalide `evolution_ready` : si le catalyseur a été retiré ou si une autre évolution est passée, l'appel retourne faux, rien ne change, et le panneau ne se referme pas sur un choix perdu. Le flux normal n'offre jamais ce cas (le jeu est en pause), mais l'API ne dépend pas de cet invariant d'interface. |
+| E30 | **Le niveau conservé dépasse le plafond de la forme évoluée.** | Impossible par les données : le test de catalogue exige `max_level(évoluée) > max_level(base)` et `evolution_level_required() ≤ max_level(base)`. Une future paire de données qui violerait cette règle échoue à `data_catalogue_test.gd`, pas en run. |
+| E31 | **Une évolution tombe pendant qu'une arme recharge.** | `WeaponSystem.refresh()` conserve le cooldown en cours, indexé par emplacement : l'arme évoluée ne reçoit pas de coup gratuit. Le passage à une cadence différente s'applique au tour suivant. |
+| E32 | **Une bannière de vague suit une bannière d'évolution.** | `show_wave_banner` retire l'override de couleur `RunConfig.evolution_color` avant de poser son texte. Une vague ne doit jamais hériter du violet d'une évolution, qui est la signature visuelle d'un événement unique. |
+| E33 | **Une nouvelle run démarre après une évolution.** | `Inventory.setup_starting` remet `evolved_weapon_id` à vide en même temps que `weapon_levels` : l'évolution est un état de run, pas un déblocage permanent. La même arme peut évoluer à nouveau dans la run suivante. |
 
 ## Dependencies
 
 | Système | Sens | Ce que ce document attend | Propriétaire |
 |---|---|---|---|
-| `src/data/weapon_data.gd` | fournit | `mechanic`, `MECHANICS`, `has_known_mechanic()`, clés de localisation et champs de mécanique, plus `max_level` et les trois `level_*_step` (lot 1). Les quatre armes existantes gardent leurs valeurs. | W2-E1 (ce document) |
+| `src/data/weapon_data.gd` | fournit | `mechanic`, `MECHANICS`, `has_known_mechanic()`, clés de localisation et champs de mécanique, plus `max_level` et les trois `level_*_step` (lot 1), puis `evolves_into`, `evolution_level`, `evolution_passive`, `has_evolution()`, `evolution_level_required()` (lot 2). Les quatre armes existantes gardent leurs valeurs. | W2-E1 (ce document) |
 | `src/systems/weapon_system.gd`, `src/actors/projectile.gd` | consomme | Résolution des dix jetons, ciblage, résolution différée de la mèche, orbe, chaîne, perforation, vol de vie. Aucune mécanique n'est implémentée ici. | W2-E2 |
 | `src/data/catalogue.tres` | consomme | **Reste à 4 armes jusqu'à W2-E2.** W2-E2 ajoute les six armes et passe `EXPECTED_WEAPONS` à 10 dans le même changement. | W2-E2, test `data_catalogue_test.gd` |
 | `design/gdd/enemy-behaviors.md` | croisé | Les colonnes Marcheur à Invocateur, les annonces, `is_elite`, la préparation interruptible, `knockback_resistance`. Ce document ne modifie pas ce GDD ; son propriétaire doit citer `weapons.md` pour la matrice et l'interruption. | W1-E0 (`game-designer`) |
@@ -584,15 +648,19 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | `design/gdd/systems-index.md` | croisé | Doit lister `weapons.md`. Un autre agent le crée ; ce document ne l'édite pas. | Orchestrateur / `game-designer` |
 | `EnemyData` | fournit | `max_hp`, `knockback_resistance`, `is_elite` (interruption et vol de vie), les états de préparation W1. | W1-E1/E2, W0-E3 |
 | `Stats` / `DamageCalc` | fournit | `damage_mult`, `attack_speed_mult`, `range_mult`, `crit_chance_bonus`, tirage de critique injecté, plus les méthodes à niveau explicite `weapon_damage(weapon, level)`, `weapon_attacks_per_second`, `weapon_range`, `level_*_multiplier` (lot 1). | existant, étendu par le lot 1 |
-| `Inventory` | fournit | Trois slots, `has_weapon` par `id`, `free_weapon_slots`, `add_weapon`, `replace_weapon`, plus `weapon_levels`, `level_of`, `upgrade_weapon`, `can_upgrade_weapon` (lot 1). | existant, étendu par le lot 1 |
+| `Inventory` | fournit | Trois slots, `has_weapon` par `id`, `free_weapon_slots`, `add_weapon`, `replace_weapon`, plus `weapon_levels`, `level_of`, `upgrade_weapon`, `can_upgrade_weapon` (lot 1), puis `evolved_weapon_id`, `evolution_ready`, `evolve_weapon`, `has_evolved_from` (lot 2). | existant, étendu par les lots 1 et 2 |
 | `Player.heal` | fournit | Le vol de vie utilise l'API de soin existante, plafonnée par `stats.max_hp`. | existant |
-| `Offer` / `main.gd` / `hud.gd` | consomme | Nommer la mécanique dans l'offre, plafonner les acquisitions par slot, ne jamais offrir de doublon, une seule ligne d'arme par panneau. Le lot 1 ajoute `Offer.for_weapon_upgrade`, la décoration au niveau visé, `_upgrade_weapon` et le niveau dans le HUD. W2-E2 modifie `Offer.for_weapon` et `_decorate_offer` ; W8-E2 branche les clés. | W2-E2, W8-E2, lot 1 |
-| `RunConfig` | fournit | `weapon_offer_weight = 1,4`, `weapon_upgrade_weight = 1,4` (lot 1), `equipment_offer_weight = 0,9`, `reroll_base = 2`, `reroll_levels = [10, 20]`, poids de butin de boss. | W0-E3, lot 1 |
+| `Offer` / `main.gd` / `hud.gd` | consomme | Nommer la mécanique dans l'offre, plafonner les acquisitions par slot, ne jamais offrir de doublon, une seule ligne d'arme par panneau. Le lot 1 ajoute `Offer.for_weapon_upgrade`, la décoration au niveau visé, `_upgrade_weapon` et le niveau dans le HUD. Le lot 2 ajoute `Offer.for_weapon_evolution`, `Offer.evolved_weapon`, `_evolution_offer` en première ligne, la teinte `RunConfig.evolution_color`, la bannière `show_evolution_banner` et le suffixe `PRÊTE` du HUD. W2-E2 modifie `Offer.for_weapon` et `_decorate_offer` ; W8-E2 branche les clés. | W2-E2, W8-E2, lots 1–2 |
+| `RunConfig` | fournit | `weapon_offer_weight = 1,4`, `weapon_upgrade_weight = 1,4` (lot 1), `equipment_offer_weight = 0,9`, `reroll_base = 2`, `reroll_levels = [10, 20]`, poids de butin de boss, puis `evolution_color`, `evolution_sound`, `evolution_banner_key`, `evolution_banner_seconds` (lot 2). | W0-E3, lots 1–2 |
+| `Sfx` / `assets/audio/sfx/evolution.wav` | consomme | Le retour d'évolution joue `evolution_sound` (« evolution ») au moment où l'offre est appliquée, une fois par run. Aucun son propre à une arme. | lot 2 |
+| `data/localization/strings.csv` | fournit | `offer.weapon_evolution`, `offer.weapon_evolution_keeps`, `evolution.banner` et les vingt clés `weapon.<id>.name/.desc` des dix formes évoluées, en `fr` et en `en`. Aucune chaîne en dur dans le code. | lot 2 |
+| `design/gdd/equipment.md` | croisé | Les passifs `rage` et `level_up_heal` sont les deux catalyseurs d'évolution ; ce document les référence, il ne les définit pas. Le GDD équipement cite `weapons.md` §3.10 en retour (réciprocité). | lot 3 |
+| `tests/integration/data_catalogue_test.gd` | consomme | Vérifie que chaque arme du catalogue nomme une évolution distincte, jamais listée dans `Catalogue.weapons`, à plafond plus haut, avec sa mécanique, ses clés et sans seconde évolution. | lot 2 |
 | `docs/localization-standard.md` | fournit | Convention `weapon.<id>.name` / `weapon.<id>.desc`. Si le standard renomme le motif, W8-E2 met à jour les dix `.tres` en une passe. | W8-E1 |
 | `design/art/art-bible.md` | croisé | Silhouettes des six nouvelles armes, couleurs et formes. Les tokens `shape` de ce document sont des intentions ; l'art tranche. | W2-E3 |
 | W4 (boutique et prix) | consomme | Si un prix par rareté apparaît, la non-domination est prouvée **par palier de prix**, pas globalement. | W4-E1/E2 |
 
-**Réciprocité.** `enemy-behaviors.md` et `classes.md` sont écrits par d'autres agents et ne sont **pas** modifiés ici (contrainte du brief). Leurs propriétaires doivent citer `weapons.md` pour la matrice 10×10, l'interruption du marteau et les armes de départ. `systems-index.md` doit référencer ce document.
+**Réciprocité.** `enemy-behaviors.md` et `classes.md` sont écrits par d'autres agents et ne sont **pas** modifiés ici (contrainte du brief). Leurs propriétaires doivent citer `weapons.md` pour la matrice 10×10, l'interruption du marteau et les armes de départ. `systems-index.md` doit référencer ce document. `equipment.md` est le propriétaire des passifs `rage` et `level_up_heal` que ce document utilise comme catalyseurs : `weapons.md` §3.10 les nomme, `equipment.md` cite les évolutions en retour.
 
 ## Tuning Knobs
 
@@ -624,6 +692,12 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | `RunConfig.weapon_upgrade_weight` | 1,4 | 0,8–2,0 | Sous 0,8, une arme portée monte à peine (1,6 niveau par run au tirage aléatoire) ; au-dessus de 2,0, la ligne d'arme écrase les stats et l'équipement. **À 1,4, acquisitions et niveaux pèsent le même poids par candidat** : la part d'arme du panneau devient indépendante du loadout (F13). |
 | `RunConfig.reroll_base` | 2 | 1–3 | 1 rend le reroll trop rare ; 3 le banalise. |
 | `RunConfig.reroll_levels` | [10, 20] | niveaux 8–12 et 18–22 | Trop tôt, le reroll remplace la décision de build ; trop tard, il ne sert plus. |
+| `WeaponData.evolution_level` | 2–4 par arme (0 = plafond de la base) | 2–`max_level` de la base | Sous 2, l'évolution arrive avant que l'arme ait une identité ; à `max_level`, la forme de base ne se joue jamais à son plein potentiel. |
+| `max_level` d'une forme évoluée | 7 | 5–10 | À 5, l'évolution n'ouvre que deux pas ; au-delà de 10, la courbe additive du lot 1 dépasse le budget de dégâts (AC13). Le test de catalogue exige strictement plus que la base. |
+| `RunConfig.evolution_color` | `Color(0,42 · 0,24 · 0,62)` | contraste ≥ 4,5:1 sur le parchemin (la valeur actuelle donne ≈ 5,5:1) | Sous ce contraste, la teinte ne signale plus l'événement ; au-delà, elle jure avec la palette de l'art bible. |
+| `RunConfig.evolution_sound` | `"evolution"` | une clé de `Sfx` existante | Une clé absente joue le son par défaut, donc l'événement perd sa signature sonore. |
+| `RunConfig.evolution_banner_key` | `"evolution.banner"` | une clé de `strings.csv` | Une clé absente affiche son identifiant brut sur la bannière. |
+| `RunConfig.evolution_banner_seconds` | 2,2 | 1,2–3,0 | Sous 1,2, le joueur lit le nom sans le voir apparaître ; au-dessus de 3,0, la bannière couvre le début de la vague suivante. |
 
 **Règle de tuning.** Toute modification d'un de ces paramètres doit être justifiée par une ligne du §4.14 et par la matrice §3.7. Un réglage qui rend une arme supérieure ou égale sur les dix colonnes doit être refusé ou compensé.
 
@@ -639,7 +713,7 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | AC6 | Trois runs d'affilée proposent des builds différents. | Simulation de trois séquences d'offres avec trois graines, même classe : les ensembles finaux de trois armes diffèrent deux à deux (au moins une arme change). W2-E4. |
 | AC7 | Aucune arme n'est offerte **en acquisition** quand les trois slots sont pleins ; une arme au max n'est jamais offerte en niveau ; aucun doublon n'est offert. | Test existant de plafond (acquisitions) + test W2-E4 avec un inventaire plein et un inventaire contenant déjà l'arme ; `weapon_upgrade_offers_test.gd` pour le plafond de niveau. |
 | AC8 | Chaque offre d'arme nomme sa mécanique avant les nombres. | Générer une `Offer` pour chacune des dix armes et vérifier que la description contient le texte de `description`/`description_key` en tête. W2-E2. |
-| AC9 | Tous les cas limites E1–E25 ont un résultat déterministe et un test. | Un test par cas, ou un test paramétré ; aucun cas sans assertion. |
+| AC9 | Tous les cas limites E1–E33 ont un résultat déterministe et un test. | Un test par cas, ou un test paramétré ; aucun cas sans assertion. E26–E33 sont couverts par les lots 1–2 ; E1–E25 restent la cible de W2-E4. |
 | AC10 | La matrice 10×10 est complète : 10 lignes, 10 colonnes, aucune case vide. | Lecture du tableau ; 100 cases non vides. |
 | AC11 | Le catalogue reste à 4 armes tant que W2-E2 n'a pas implémenté les mécaniques. | `data_catalogue_test.gd` : `EXPECTED_WEAPONS := 4` non modifié, suite verte. |
 | AC12 | Une arme portée sous `max_level` est reproposée comme niveau ; une arme au max ne l'est jamais ; un panneau ne porte qu'une ligne d'arme. | `tests/integration/weapon_upgrade_offers_test.gd` (8 tests) vert. |
@@ -647,3 +721,8 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | AC14 | Le niveau est un état de run : remplacement et nouvelle run repartent au niveau 1. | `weapon_levels_test.gd` : remplacement, `setup_starting`, niveaux négatifs lus comme 1. |
 | AC15 | Le poids de niveau est choisi sur le vrai chemin d'offre, pas sur un modèle. | `tools/weapon_upgrade_sim.gd` : 200 runs × 15 panneaux × 2 politiques ; à 1,4, 10,4 lignes d'arme et 2,1 niveaux par run en aléatoire, 7,2 niveaux et 13,5 % de runs tout-au-max en greedy. |
 | AC16 | L'offre de niveau affiche le niveau visé et les nombres effectifs au niveau visé. | Test d'intégration : titre contient « niv. 2 », description contient « niv. 1 → 2 » et « DPS ». |
+| AC17 | Une évolution dont la condition est incomplète n'est **jamais** offerte ; une fois la condition remplie, elle est offerte **une fois** puis retirée pour le reste de la run. | `tests/integration/weapon_evolution_offers_test.gd` (11 tests) : sous le niveau requis → 0 ligne ; au niveau requis → 1 ligne, puis 0 après le choix. |
+| AC18 | L'arme évoluée conserve le niveau atteint à l'instant de l'évolution et peut encore monter jusqu'à son propre plafond. | Même suite : `level_of(évoluée) == evolution_level_required()`, puis une offre `weapon_upgrade` vers le niveau suivant ; le test de catalogue exige `max_level(évoluée) > max_level(base)`. |
+| AC19 | L'évolution est la **première ligne** de son panneau et le panneau ne porte **aucune autre** ligne d'arme (A2). | Même suite : `offers[0].kind == "weapon_evolution"` et aucune ligne `weapon`/`weapon_upgrade` dans le panneau. |
+| AC20 | Une évolution à catalyseur attend que le passif soit **porté** ; elle ne se déclenche pas sur le seul niveau. | Même suite : sans pièce `rage` portée → 0 ligne ; avec → 1 ligne. Test de catalogue : les deux passifs du lot 3 sont chacun catalyseur d'au moins une évolution. |
+| AC21 | Les dix évolutions sont des données complètes : `id` unique, absentes de `Catalogue.weapons`, même mécanique que leur base, clés `weapon.<id>.name/.desc` localisées en `fr` et `en`, et le retour d'événement (anneau, son, bannière, durée) est lu dans `RunConfig`. | `data_catalogue_test.gd` (13 tests) + `weapon_evolutions_test.gd` (12 tests) verts ; capture retenue `production/qa/evidence/lot2-weapon-evolutions.png` ; suite complète 189 tests / 25 suites, exit 0 en `fr` et `--language en`. |
