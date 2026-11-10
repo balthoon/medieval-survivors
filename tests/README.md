@@ -31,12 +31,12 @@ supprimés. Correspondance :
 | Ancien script | Suite gdUnit4 | Tests | Ce qui est couvert |
 |---|---|---|---|
 | `verify_facing.gd` | `integration/facing_targeting_test.gd` | 3 | lame sans ennemi → direction du mouvement ; ennemi hors portée quand même visé ; l'ennemi le plus proche gagne |
-| `verify_slice02.gd` | `integration/combat_weapons_test.gd` | 6 | inventaire de départ ; trois armes uniques ; stats d'équipement sans double comptage ; coup de mêlée ; projectile ; offres (pas d'arme quand les slots sont pleins, application effective) |
+| `verify_slice02.gd` | `integration/combat_weapons_test.gd` | 6 | inventaire de départ ; trois armes uniques ; stats d'équipement sans double comptage ; coup de mêlée ; projectile ; offres (pas d'acquisition quand les slots sont pleins, application effective, niveau compris dans l'empreinte) |
 | `verify_slice03.gd` | `integration/progression_level_up_test.gd` | 11 | câblage ; courbe d'XP ; stats additives ; critique ; poids de rareté ; texte d'équipement ; timings d'attaque ; invulnérabilité ; signal `hit_landed` ; équipement dominé jamais offert ; reroll |
 | `verify_slice04.gd` (règles) | `integration/boss_rules_test.gd` | 10 | câblage boss ; cadence toutes les 5 vagues ; paliers de scaling ; télégraphe ; portée du slam ; résistance au recul ; spawner qui ignore le boss ; finish line ; pas de doublon de slot ; plafond d'offres d'armes |
 | `verify_slice04.gd` (combat) | `integration/boss_fight_test.gd` | 3 | apparition d'un unique boss palier 0 + barre ; dégâts du slam dans le rayon seulement ; mort du boss → butin |
 | — | `integration/main_scene_bootstrap_test.gd` | 1 | la scène principale expose `Player` et `EnemyManager` |
-| — | `integration/data_catalogue_test.gd` | 8 | `data/catalogue.tres` énumère tout le contenu (3 ennemis, 1 boss, 10 armes, équipement, améliorations, vagues, classe) et le charge ; chaque arme a un id unique et un `mechanic` connu |
+| — | `integration/data_catalogue_test.gd` | 9 | `data/catalogue.tres` énumère tout le contenu (3 ennemis, 1 boss, 10 armes, équipement, améliorations, vagues, classe) et le charge ; chaque arme a un id unique et un `mechanic` connu |
 | — | `integration/spawner_unlock_test.gd` | 7 | les déverrouillages pointent sur `EnemyData.id`, jamais sur `display_name` ; renommer l'un ne déverrouille pas l'autre |
 | — | `integration/weapon_mechanics_test.gd` | 13 | les dix mécaniques W2-E2 : bonus de portée de l'arc, falloff de l'arbalète, projectile perforant vs simple, refund d'exécution, chaîne, tour complet de la faux, vol de vie (normal et refusé sur élite), orbe une fois par tour, mèche de l'encensoir, stagger (immunité des élites), description d'offre nommant la mécanique |
 | — | `unit/harness_bootstrap_test.gd` | 1 | le harnais lui-même : découverte, assertion, code de sortie |
@@ -47,8 +47,12 @@ supprimés. Correspondance :
 | — | `integration/obstacle_collision_test.gd` | 3 | la scène principale partage un unique champ non vide entre le joueur et `EnemyManager` ; un tronc bloque le chevalier poussé vers la droite et ne le laisse jamais dedans ; un squelette apparu au centre d'un tronc est résolu dehors |
 | — | `unit/actor_animations_test.gd` | 12 | les minuteries du lot 2 (ADR-0003) : phase de marche figée à l'arrêt, avancée en mouvement, bornée à `[0, TAU)` ; lunge armé sur l'angle de tir, décroît à zéro sans devenir négatif ; ni marche ni lunge ne déplace `position` ; `DeathFade.create` copie art/rayon/teinte, mi-durée = moitié écrasé et moitié transparent, fin = `END_SCALE`, alpha 0, `queue_free` ; `step_visual` avance le temps du dandinement sans déplacer le corps ; phase déterministe dérivée du point d'apparition |
 | — | `integration/animation_wiring_test.gd` | 3 | la vraie scène relie `WeaponSystem.attack_started` à `Player.play_attack_lunge` (temps et direction) ; `remove_dead` crée exactement un `DeathFade` à l'endroit de la mort, retire l'ennemi et rend son XP ; `step_all` avance l'horloge d'animation d'un ennemi vivant tout en le faisant avancer |
+| — | `unit/stats_caps_test.gd` | 6 | les plafonds de stats d'une offre : `is_capped` pour le bonus du joueur seul, `crit_is_capped_for` pour les armes réellement portées (un bonus de 0,70 sous le plafond devient mort avec une arme à 0,05 de base) ; aucune des deux ne confond les deux questions |
+| — | `integration/offer_pool_test.gd` | 4 | le pool ne propose jamais une stat au plafond (crit) ni un équipement au plafond ; un pool entièrement vide se replie sur une amélioration ; un niveau sans aucune offre applicable n'est pas consommé |
+| — | `unit/weapon_levels_test.gd` | 12 | lot 1 : pas additif sur la base (niv. 4 = ×1,75, pas ×1,25³) et avant les multiplicateurs globaux ; cadence +5 % par niveau ; portée et rayon d'orbe ; niveau < 1 lu comme 1 ; plafond à `max_level` ; refus si l'arme n'est pas portée ; arme neuve au niveau 1 ; remplacement et nouvelle run repartent au niveau 1 ; `DamageCalc.roll` utilise le niveau demandé et vaut 1 par défaut |
+| — | `integration/weapon_upgrade_offers_test.gd` | 9 | lot 1 : une seule ligne d'arme par panneau (acquisition ou niveau, jamais les deux) ; le niveau vise le suivant et affiche les nombres effectifs à ce niveau ; la ligne de nombres suit la locale active (français ou anglais, jamais les deux) ; une arme au max n'est jamais offerte ; le niveau choisi ne remet pas le cooldown à zéro ; une arme neuve entre au niveau 1 ; le poids de niveau vient de `RunConfig` et le butin de boss le remplace |
 
-**Total : 109 tests, 17 suites.**
+**Total : 141 tests, 21 suites.**
 
 ## Conventions
 

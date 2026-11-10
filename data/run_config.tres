@@ -10,6 +10,7 @@ contact_cooldown = 1.0
 upgrade_offer_count = 3
 joy_axis_deadzone = 0.25
 weapon_offer_weight = 1.4
+weapon_upgrade_weight = 1.4
 equipment_offer_weight = 0.9
 reroll_base = 2
 reroll_levels = Array[int]([10, 20])

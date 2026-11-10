@@ -21,6 +21,9 @@ const LENGTH := 16.0
 var weapon: WeaponData = null
 ## Player stats at the moment of firing.
 var stats: Stats = null
+## Weapon level at the moment of firing. Snapshot like the weapon itself: an
+## upgrade taken while the bolt flies must not retune a shot already in the air.
+var level: int = 1
 ## Roll source shared with the run, for deterministic crits.
 var rng: RandomNumberGenerator = null
 ## Unit direction of travel.
@@ -43,11 +46,13 @@ static func create(
 	from_stats: Stats,
 	from_rng: RandomNumberGenerator,
 	from: Vector2,
-	dir: Vector2
+	dir: Vector2,
+	from_level: int = 1
 ) -> Projectile:
 	var bolt := Projectile.new()
 	bolt.weapon = fired_weapon
 	bolt.stats = from_stats
+	bolt.level = maxi(from_level, 1)
 	bolt.rng = from_rng
 	bolt.position = from
 	bolt.direction = dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
@@ -70,7 +75,7 @@ func step(delta: float, enemy_manager: EnemyManager) -> bool:
 	var distance := weapon.projectile_speed * delta
 	var sub_steps := maxi(1, int(ceilf(distance / RADIUS)))
 	var step_length := distance / float(sub_steps)
-	var max_range := stats.weapon_range(weapon)
+	var max_range := stats.weapon_range(weapon, level)
 
 	for _index in sub_steps:
 		position += direction * step_length
@@ -97,9 +102,9 @@ func step(delta: float, enemy_manager: EnemyManager) -> bool:
 func _resolve_hit(enemy: Enemy) -> void:
 	if enemy == null:
 		return
-	var hit := DamageCalc.roll(stats, weapon, rng)
+	var hit := DamageCalc.roll(stats, weapon, rng, level)
 	var amount := mechanic_damage(
-		weapon, float(hit["amount"]), travelled, stats.weapon_range(weapon), _pierce_rank
+		weapon, float(hit["amount"]), travelled, stats.weapon_range(weapon, level), _pierce_rank
 	)
 	var is_crit := bool(hit["is_crit"])
 	if weapon.mechanic == &"pierce":

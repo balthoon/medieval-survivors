@@ -83,25 +83,67 @@ func apply_equipment(item: EquipmentData) -> void:
 			range_mult += item.amount
 
 
-## Effective damage of one weapon, before the crit roll.
-func weapon_damage(weapon: WeaponData) -> float:
+## Damage multiplier granted by one weapon level alone. The step is additive on
+## the base stat: level 4 with a 0.25 step is x1.75, not x1.25^3. This applies
+## **before** [member damage_mult], so a level bonus and a global bonus compose
+## as (base x level) x global.
+static func level_damage_multiplier(weapon: WeaponData, level: int = 1) -> float:
+	if weapon == null:
+		return 1.0
+	return 1.0 + maxf(weapon.level_damage_step, 0.0) * float(maxi(level, 1) - 1)
+
+
+## Cadence multiplier granted by one weapon level alone, applied before
+## [member attack_speed_mult].
+static func level_cadence_multiplier(weapon: WeaponData, level: int = 1) -> float:
+	if weapon == null:
+		return 1.0
+	return 1.0 + maxf(weapon.level_cadence_step, 0.0) * float(maxi(level, 1) - 1)
+
+
+## Reach multiplier granted by one weapon level alone, applied before
+## [member range_mult].
+static func level_range_multiplier(weapon: WeaponData, level: int = 1) -> float:
+	if weapon == null:
+		return 1.0
+	return 1.0 + maxf(weapon.level_range_step, 0.0) * float(maxi(level, 1) - 1)
+
+
+## Multiplier applied to every reach-like value of [param weapon] at
+## [param level]: range_px and orbit_radius. The level step applies first, then
+## [member range_mult]; fuse_radius and chain_jump_radius are deliberately not
+## scaled (GDD E20).
+func weapon_range_multiplier(weapon: WeaponData, level: int = 1) -> float:
+	if weapon == null:
+		return 1.0
+	return level_range_multiplier(weapon, level) * range_mult
+
+
+## Effective damage of one weapon at [param level], before the crit roll.
+## Order: base damage, then the level step, then [member damage_mult].
+func weapon_damage(weapon: WeaponData, level: int = 1) -> float:
 	if weapon == null:
 		return 0.0
-	return weapon.damage * damage_mult
+	return weapon.damage * level_damage_multiplier(weapon, level) * damage_mult
 
 
-## Effective attacks per second of one weapon.
-func weapon_attacks_per_second(weapon: WeaponData) -> float:
+## Effective attacks per second of one weapon at [param level]. Order: base
+## cadence, then the level step, then [member attack_speed_mult].
+func weapon_attacks_per_second(weapon: WeaponData, level: int = 1) -> float:
 	if weapon == null:
 		return 0.0
-	return maxf(weapon.attacks_per_second * attack_speed_mult, 0.001)
+	return maxf(
+		weapon.attacks_per_second * level_cadence_multiplier(weapon, level) * attack_speed_mult,
+		0.001
+	)
 
 
-## Effective reach of one weapon, in pixels.
-func weapon_range(weapon: WeaponData) -> float:
+## Effective reach of one weapon at [param level], in pixels. Order: base
+## range, then the level step, then [member range_mult].
+func weapon_range(weapon: WeaponData, level: int = 1) -> float:
 	if weapon == null:
 		return 0.0
-	return weapon.range_px * range_mult
+	return weapon.range_px * level_range_multiplier(weapon, level) * range_mult
 
 
 ## Effective crit chance of one weapon, clamped so it never exceeds

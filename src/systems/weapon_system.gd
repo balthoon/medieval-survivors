@@ -110,13 +110,13 @@ func refresh() -> void:
 		_warn_unknown_mechanic(weapon)
 		if weapon.mechanic == &"orbit":
 			var orbit := OrbitBlade.new()
-			orbit.setup(weapon, stats, rng, player, enemy_manager)
+			orbit.setup(weapon, stats, rng, player, enemy_manager, inventory.level_of(weapon))
 			orbit.hit_landed.connect(_on_extra_hit_landed.bind(weapon))
 			player.add_child(orbit)
 			_orbits[index] = orbit
 		elif weapon.kind == "melee":
 			var view := WeaponView.new()
-			view.setup(weapon, stats.weapon_range(weapon))
+			view.setup(weapon, stats.weapon_range(weapon, inventory.level_of(weapon)))
 			player.add_child(view)
 			_views[index] = view
 
@@ -150,22 +150,23 @@ func step(delta: float) -> void:
 			continue
 		if enemy_manager == null:
 			continue
-		var reach := stats.weapon_range(weapon)
+		var level := inventory.level_of(weapon)
+		var reach := stats.weapon_range(weapon, level)
 		var target := enemy_manager.nearest_within(player.position, reach)
 		if target == null or _cooldowns[index] > 0.0:
 			continue
 
-		_cooldowns[index] = 1.0 / stats.weapon_attacks_per_second(weapon)
+		_cooldowns[index] = 1.0 / stats.weapon_attacks_per_second(weapon, level)
 		var angle := (target.position - player.position).angle()
 		# One emission per shot that actually fires: every branch below has just
 		# paid this weapon's cooldown. The orbit moon never reaches this point.
 		attack_started.emit(angle)
 		if weapon.mechanic == &"fuse":
-			_throw_censer(weapon, target, reach)
+			_throw_censer(weapon, target, reach, level)
 		elif weapon.kind == "projectile":
-			_fire_projectile(weapon, angle)
+			_fire_projectile(weapon, angle, level)
 		else:
-			_swing(weapon, angle, reach, view, index)
+			_swing(weapon, angle, reach, view, index, level)
 
 
 ## Seconds of cooldown left on a weapon, in seconds. Zero when ready. Used by
@@ -185,7 +186,7 @@ func cooldown_ratio(index: int) -> float:
 	var weapon := inventory.weapons[index]
 	if weapon == null:
 		return 0.0
-	var interval := 1.0 / stats.weapon_attacks_per_second(weapon)
+	var interval := 1.0 / stats.weapon_attacks_per_second(weapon, inventory.level_of(weapon))
 	if interval <= 0.0:
 		return 0.0
 	return clampf(cooldown_seconds(index) / interval, 0.0, 1.0)
@@ -194,9 +195,16 @@ func cooldown_ratio(index: int) -> float:
 ## Starts one melee swing. Damage is not applied here: the hit is queued and
 ## resolved at IMPACT_FRACTION through the swing, against wherever the enemies
 ## stand when the blade actually lands. The inventory index travels with the
-## hit so the dagger's execution refund can reach the right cooldown.
+## hit so the dagger's execution refund can reach the right cooldown, and the
+## weapon level is snapshotted so an upgrade taken mid-swing cannot retune a
+## hit already in flight (GDD E19).
 func _swing(
-	weapon: WeaponData, angle: float, reach: float, view: WeaponView, index: int
+	weapon: WeaponData,
+	angle: float,
+	reach: float,
+	view: WeaponView,
+	index: int,
+	level: int
 ) -> void:
 	if view != null:
 		view.start_swing(angle)
@@ -205,16 +213,17 @@ func _swing(
 		"index": index,
 		"angle": angle,
 		"reach": reach,
+		"level": level,
 		"time_left": weapon.swing_duration * IMPACT_FRACTION,
 	})
 
 
-## Spawns one bolt along [param angle].
-func _fire_projectile(weapon: WeaponData, angle: float) -> void:
+## Spawns one bolt along [param angle], with the level it was fired at.
+func _fire_projectile(weapon: WeaponData, angle: float, level: int) -> void:
 	if projectile_layer == null:
 		return
 	var bolt := Projectile.create(
-		weapon, stats, rng, player.position, Vector2.RIGHT.rotated(angle)
+		weapon, stats, rng, player.position, Vector2.RIGHT.rotated(angle), level
 	)
 	bolt.hit_resolved.connect(_on_projectile_hit_resolved.bind(weapon))
 	projectile_layer.add_child(bolt)
@@ -252,6 +261,7 @@ func _resolve_melee_hit(pending: Dictionary) -> void:
 	var index := int(pending.get("index", -1))
 	var angle := float(pending["angle"])
 	var reach := float(pending["reach"])
+	var level := int(pending.get("level", 1))
 	# A 360° sweep is a full circle, not a half-angle comparison: Vector2.angle_to
 	# returns a float32-rounded PI, a hair larger than deg_to_rad(180), which would
 	# otherwise exclude an enemy standing exactly behind the player.
@@ -260,7 +270,7 @@ func _resolve_melee_hit(pending: Dictionary) -> void:
 	var hit_this_swing: Array[Enemy] = []
 	for enemy in targets:
 		var hp_before := enemy.hp
-		var hit := DamageCalc.roll(stats, weapon, rng)
+		var hit := DamageCalc.roll(stats, weapon, rng, level)
 		var amount := float(hit["amount"])
 		var is_crit := bool(hit["is_crit"])
 		var killed := enemy.take_damage(amount, is_crit)
@@ -288,25 +298,25 @@ func _resolve_melee_hit(pending: Dictionary) -> void:
 		hit_landed.emit(is_crit, amount, enemy.position)
 
 	if weapon.mechanic == &"chain":
-		_resolve_chain(weapon, hit_this_swing)
+		_resolve_chain(weapon, hit_this_swing, level)
 
 
 ## Sends one chain jump per initial victim, each hop from the previous target.
 ## Dead enemies and enemies already hit by this cast are never candidates
 ## (GDD edge case E1).
-func _resolve_chain(weapon: WeaponData, initial_hits: Array[Enemy]) -> void:
+func _resolve_chain(weapon: WeaponData, initial_hits: Array[Enemy], level: int) -> void:
 	if weapon.chain_jumps <= 0 or weapon.chain_jump_radius <= 0.0:
 		return
 	# Snapshot the initial victims: the hit set grows with every hop, and the
 	# chain must not start a fresh cast from an enemy it just reached.
 	for source in initial_hits.duplicate():
-		_chain_from(weapon, source, 0, initial_hits)
+		_chain_from(weapon, source, 0, initial_hits, level)
 
 
 ## Resolves jump number [param jump] (one-based) from [param source] and
 ## recurses into the next hop until the count runs out or no candidate remains.
 func _chain_from(
-	weapon: WeaponData, source: Enemy, jump: int, hit_set: Array[Enemy]
+	weapon: WeaponData, source: Enemy, jump: int, hit_set: Array[Enemy], level: int
 ) -> void:
 	if jump >= weapon.chain_jumps or enemy_manager == null or source == null:
 		return
@@ -324,7 +334,7 @@ func _chain_from(
 		return
 
 	var rank := jump + 1
-	var hit := DamageCalc.roll(stats, weapon, rng)
+	var hit := DamageCalc.roll(stats, weapon, rng, level)
 	var amount := float(hit["amount"]) * pow(weapon.chain_falloff, rank)
 	var is_crit := bool(hit["is_crit"])
 	next.take_damage(amount, is_crit)
@@ -337,19 +347,19 @@ func _chain_from(
 		sfx.play(_impact_sound(weapon, is_crit))
 	hit_landed.emit(is_crit, amount, next.position)
 
-	_chain_from(weapon, next, rank, hit_set)
+	_chain_from(weapon, next, rank, hit_set, level)
 
 
 ## Throws one censer at the target's current position. With no target it lands
 ## at the end of the weapon's reach along the player's facing (edge case E11).
-func _throw_censer(weapon: WeaponData, target: Enemy, reach: float) -> void:
+func _throw_censer(weapon: WeaponData, target: Enemy, reach: float, level: int) -> void:
 	if projectile_layer == null or player == null:
 		return
 	var landing := player.position + Vector2.RIGHT.rotated(player.facing) * reach
 	if target != null:
 		landing = target.position
 	var bomb := CenserBomb.create(weapon, player.position, landing)
-	bomb.detonated.connect(_on_censer_detonated.bind(weapon))
+	bomb.detonated.connect(_on_censer_detonated.bind(weapon, level))
 	projectile_layer.add_child(bomb)
 	_censer_bombs.append(bomb)
 
@@ -370,10 +380,10 @@ func _step_censer_bombs(delta: float) -> void:
 ## Applies one detonation: a single crit roll shared by every victim in the
 ## blast (GDD F11), then one hit per living enemy inside the radius. The blast
 ## radius is not multiplied by range_mult (edge case E20).
-func _on_censer_detonated(at: Vector2, radius: float, weapon: WeaponData) -> void:
+func _on_censer_detonated(at: Vector2, radius: float, weapon: WeaponData, level: int) -> void:
 	if stats == null or enemy_manager == null or weapon == null:
 		return
-	var hit := DamageCalc.roll(stats, weapon, rng)
+	var hit := DamageCalc.roll(stats, weapon, rng, level)
 	var amount := float(hit["amount"])
 	var is_crit := bool(hit["is_crit"])
 	for enemy in enemy_manager.query_circle(at, radius):

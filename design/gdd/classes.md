@@ -365,9 +365,9 @@ C'est un résultat de maîtrise, pas un bug. Mais il ne doit pas être gratuit :
 
 ### 5.5 Reroll d'une offre d'arme quand les emplacements sont pleins
 
-- Avec 3 armes, `free_weapon_slots()` vaut 0 ; `_build_offers` n'ajoute aucune offre d'arme. Un reroll ne peut donc pas produire une ligne d'arme morte.
-- Si un reroll survient après l'acquisition d'une arme, le panneau est reconstruit et le nombre d'emplacements libres est recalculé. Aucune offre d'arme ne peut être sélectionnée sans emplacement.
-- Si un chemin futur appelait `_gain_weapon` avec 3 armes, `add_weapon` renvoie faux et l'offre est consommée sans effet : c'est un choix perdu. W3-E2 doit ajouter un test « aucune offre d'arme quand 3 armes » pour que ce chemin reste impossible.
+- Avec 3 armes, `free_weapon_slots()` vaut 0 ; `_build_offers` n'ajoute aucune **acquisition**. Un reroll ne peut donc pas produire une ligne d'acquisition morte ; une ligne de **niveau** reste possible tant que l'arme visée est sous son `max_level` (lot 1, `weapons.md` §3.8).
+- Si un reroll survient après l'acquisition d'une arme, le panneau est reconstruit et le nombre d'emplacements libres est recalculé. Aucune acquisition ne peut être sélectionnée sans emplacement ; une ligne de niveau reste valide.
+- Si un chemin futur appelait `_gain_weapon` avec 3 armes, `add_weapon` renvoie faux et l'offre est consommée sans effet : c'est un choix perdu. W3-E2 doit ajouter un test « aucune acquisition quand 3 armes » pour que ce chemin reste impossible.
 
 ### 5.6 Valeurs extrêmes et division par zéro
 
@@ -520,7 +520,7 @@ Aucun knob de gate n'appartient aux classes. Les portes de pacing restent `WaveD
 4. **Trait de marge.** Un projectile à `d = 0 / 100 / 200 / 300 / 320` donne ×1,00 / ×1,00 / ×1,25 / ×1,50 / ×1,50 ; une mêlée donne ×1,00 ; un critique à 300 px donne ×2 ×1,50 ; `hit_resolved` porte le montant final.
 5. **Ancrage.** Immobile 0,74 s : non ancré ; 0,75 s : ancré ; mouvement 0,49 s : encore ancré ; 0,51 s : plus ancré ; s'arrêter à nouveau repart de 0,75 s. Dégâts reçus ×0,80, plancher 1,0, sur contact et slam.
 6. **PV effectifs.** Les exemples du tableau 4.4 passent : Pénitent ancré 140 / 0,8 = 175 ; slam palier 0 = 17,6 ; 8 coups pour mourir ; palier 1 = 23,8 ; 6 coups.
-7. **Level-up.** Pour chaque classe : l'arme de départ n'apparaît jamais dans les offres ; avec 3 armes, `_build_offers` ne produit aucune offre d'arme et un reroll rend 3 offres non-arme ; `reroll_base = 2` et les rerolls de niveau 10/20 sont inchangés ; remplacer un équipement recalcule les stats depuis la classe sans doubler le multiplicateur.
+7. **Level-up.** Pour chaque classe : l'arme de départ n'apparaît jamais en **acquisition** ; avec 3 armes, `_build_offers` ne produit aucune acquisition et un reroll rend 3 offres sans acquisition (les lignes de niveau restent possibles, lot 1) ; `reroll_base = 2` et les rerolls de niveau 10/20 sont inchangés ; remplacer un équipement recalcule les stats depuis la classe sans doubler le multiplicateur.
 8. **Boss 5.** Une fixture headless (niveau 6, arme de départ + 2 armes, Dégâts +20 %, Cadence +15 %, joueur placé à sa bande idéale, armes à portée) tue le boss palier 0 (480 PV) en ≤ 20 s pour les trois classes ; le panneau de butin s'ouvre exactement une fois.
 9. **Mort simultanée.** Si le joueur et le boss tombent à 0 PV sur la même frame, la run est une défaite, aucun panneau de butin ne s'ouvre, et la carte de mort est la seule affichée.
 10. **Écran (W3-E4).** Test clavier : `move_left/right` cycle avec bouclage, `choice_1/2/3` sélectionnent directement, `ui_accept` confirme, une confirmation maintenue ne confirme qu'une fois, le focus ne se perd pas, aucune touche de déplacement n'entre dans la vague 1, l'horloge de vague est à 0 avant confirmation. Capture retenue dans `production/qa/evidence/`.

@@ -231,17 +231,20 @@ func _sample_enemy(hp: float) -> EnemyData:
 	return data
 
 
-## Fingerprint of everything an offer can change: the carried weapons, every
-## body slot and the base stats the next recompute is built from.
+## Fingerprint of everything an offer can change: the carried weapons with their
+## levels, every body slot and the base stats the next recompute is built from.
 func _offer_state(main: Node) -> String:
 	var inventory: Inventory = main._inventory
 	var base_stats: Stats = main._base_stats
+	var weapons := "%d:" % inventory.weapons.size()
+	for weapon in inventory.weapons:
+		weapons += "%s@%d;" % [weapon.id, inventory.level_of(weapon)]
 	var equipment := ""
 	for slot in Inventory.SLOTS:
 		var item: EquipmentData = inventory.item_in_slot(slot)
 		equipment += "%s=%s;" % [slot, item.id if item != null else ""]
-	return "%d|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%s" % [
-		inventory.weapons.size(),
+	return "%s|%.4f|%.4f|%.4f|%.4f|%.4f|%.4f|%s" % [
+		weapons,
 		base_stats.max_hp,
 		base_stats.move_speed_mult,
 		base_stats.damage_mult,

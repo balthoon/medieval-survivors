@@ -23,7 +23,7 @@ Les quatre armes existantes gardent leur fantasy et gagnent une règle lisible :
 
 - Dix armes, dix identifiants stables, **dix jetons de mécanique distincts** : `cleave`, `execution`, `stagger`, `distance`, `whirl`, `pierce`, `chain`, `orbit`, `fuse`, `lifesteal`.
 - Toutes les armes partagent les **trois emplacements** de `Inventory.MAX_WEAPONS = 3`. Aucune arme n'a de slot propre. Une arme occupe un emplacement jusqu'à la fin de la run ; le level-up ne remplace pas une arme (voir §3.8).
-- Une arme déjà portée n'est jamais reproposée : `Inventory.has_weapon` compare par `id`. Deux armes identiques ne peuvent pas être portées.
+- Une arme déjà portée n'est jamais reproposée **en acquisition** : `Inventory.has_weapon` compare par `id`. Deux armes identiques ne peuvent pas être portées. En revanche, une arme portée sous son niveau maximum est reproposée comme **niveau** (`weapon_upgrade`, lot 1) : c'est la même arme qui monte, pas une seconde copie.
 - La **mécanique est la règle** ; `kind` (`melee` / `projectile`) et `shape` (dessin) restent des détails de résolution et de présentation. Une arme peut être mêlée et avoir une mécanique à distance (bâton en chaîne), ou projectile et ne pas infliger de dégâts à l'impact (encensoir).
 - Les valeurs de combat restent dans les `.tres` ; aucun nombre de ce document ne vit dans un script.
 
@@ -189,7 +189,7 @@ Chaque case commence par un verdict — **Très fort** > **Fort** > **Moyen** > 
 
 ### 3.8 Offres décisionnelles
 
-**Ce qu'une offre d'arme doit montrer.** Le titre garde le format existant « Arme : <nom> ». La description commence par le texte de `weapon.<id>.desc` — la **mécanique nommée** — puis les nombres qui aident à décider. Une offre qui n'affiche que « 12 dégâts · 1,8 att/s · 22 DPS · portée 64 px » est refusée : elle cache la règle. Pour les mécaniques non couvertes par le DPS du tronc commun, l'affichage est spécifique :
+**Ce qu'une offre d'arme doit montrer.** Le titre d'une acquisition garde le format existant « Arme : <nom> » ; celui d'un niveau est décrit plus bas. La description commence par le texte de `weapon.<id>.desc` — la **mécanique nommée** — puis les nombres qui aident à décider. Une offre qui n'affiche que « 12 dégâts · 1,8 att/s · 22 DPS · portée 64 px » est refusée : elle cache la règle. Pour les mécaniques non couvertes par le DPS du tronc commun, l'affichage est spécifique :
 
 | Mécanique | Ce que l'offre affiche après la phrase |
 |---|---|
@@ -204,17 +204,21 @@ Chaque case commence par un verdict — **Très fort** > **Fort** > **Moyen** > 
 | `fuse` | « Détonation après 0,9 s · rayon 70 px · 22 dégâts par ennemi ». |
 | `lifesteal` | DPS et « +4,6 PV/s · élites immunisées ». |
 
-**Poids et tirage.** Le niveau tire trois offres distinctes sans remise, chacune pondérée par `Offer.weight`. Les armes candidates valent toutes `RunConfig.weapon_offer_weight` (1,4) : aucune arme n'est plus probable qu'une autre. Les améliorations valent leur `weight` (1,0 chacune) et l'équipement vaut `equipment_offer_weight` (0,9) × le poids de rareté. La formule est en §4.13.
+**Poids et tirage.** Le niveau tire trois offres distinctes sans remise, chacune pondérée par `Offer.weight`. Les armes candidates valent toutes `RunConfig.weapon_offer_weight` (1,4) : aucune arme n'est plus probable qu'une autre. Les niveaux valent `RunConfig.weapon_upgrade_weight` (1,4), de sorte qu'une acquisition et un niveau pèsent le même poids par candidat. Les améliorations de stat valent leur `weight` (1,0 chacune) et l'équipement vaut `equipment_offer_weight` (0,9) × le poids de rareté. La formule est en §4.13.
 
-**Slots pleins.** Aucune arme n'est proposée quand `Inventory.free_weapon_slots() == 0` : le refus est structurel, pas une option. Le joueur ne peut donc jamais « refuser » une arme faute de place — il ne la voit pas. Le level-up ne remplace jamais une arme. Si W4 ajoute un échange en boutique, il passera par `Inventory.replace_weapon` et non par le panneau de level-up.
+**Niveaux d'arme (lot 1).** Une arme portée sous son `max_level` (4 dans les données actuelles) est candidate à une offre `weapon_upgrade`. Le titre est « ↑ <nom> +1 (niv. N) » ; la description commence par « niv. N-1 → N », puis les nombres **effectifs au niveau visé** — le joueur voit ce que le niveau suivant change, pas les valeurs actuelles. Un niveau ajoute un pas **additif** sur la base (`WeaponData.level_damage_step = 0,25`, `level_cadence_step = 0,05`, `level_range_step = 0,05` par niveau), appliqué **avant** les multiplicateurs globaux ; le niveau 4 vaut donc ×1,75 dégâts et ×1,15 cadence, pas ×1,25³. Une arme au niveau maximum n'est jamais candidate. Le niveau vit dans `Inventory.weapon_levels`, indexé par l'`id` de l'arme : la `WeaponData` reste partagée par toutes les runs.
 
-**Doublons.** Une arme dont l'`id` est déjà porté n'est jamais candidate (`Inventory.has_weapon`) et `Inventory.add_weapon` la refuse. Deux `.tres` distincts avec le même `id` sont un défaut de données : le second est traité comme déjà porté, et le test de données de W2-E4 exige des `id` uniques.
+**Une seule ligne d'arme (A2).** Acquisitions et niveaux partagent une seule et même ligne : un panneau ne montre jamais deux lignes d'arme. Le pool pondéré contient toutes les candidates, chacune avec son poids, et c'est `_pick_weighted` qui retire les autres lignes d'arme dès qu'une est tirée. Conséquence assumée : un panneau ne propose jamais « une arme neuve **et** un niveau » ; le second choix attend le panneau suivant.
 
-**Plafond par slot libre.** Le nombre d'offres d'armes est plafonné à `free_weapon_slots()` : deux slots libres donnent au plus deux lignes d'arme, un slot libre une seule. Le tirage excédentaire est mélangé uniformément (Fisher-Yates avec le RNG de la run), jamais trié par DPS.
+**Slots pleins.** Aucune arme n'est proposée **en acquisition** quand `Inventory.free_weapon_slots() == 0` : le refus est structurel, pas une option. Le joueur ne peut donc jamais « refuser » une arme faute de place — il ne la voit pas. Les niveaux, eux, restent disponibles quand les trois slots sont pleins : c'est là qu'ils prennent le relais. Le level-up ne remplace jamais une arme. Si W4 ajoute un échange en boutique, il passera par `Inventory.replace_weapon` et non par le panneau de level-up.
 
-**Reroll.** `RunConfig.reroll_base = 2`, plus un reroll aux niveaux 10 et 20 (`reroll_levels`). Un reroll reconstruit les trois offres, garde le panneau ouvert et ne rend pas le choix précédent. Il ne peut pas créer une offre d'arme quand les slots sont pleins, et il partage le même compteur entre level-up et butin de boss.
+**Doublons.** Une arme dont l'`id` est déjà porté n'est jamais candidate **en acquisition** (`Inventory.has_weapon`) et `Inventory.add_weapon` la refuse ; elle peut en revanche être candidate **en niveau** tant qu'elle est sous son max. Deux `.tres` distincts avec le même `id` sont un défaut de données : le second est traité comme déjà porté, et le test de données de W2-E4 exige des `id` uniques.
 
-**Butin de boss.** Même panneau, poids `boss_loot_weapon_weight = 3,0` et `boss_loot_equipment_weight = 2,5`, toujours plafonné par les slots libres et toujours sans doublon.
+**Plafond des acquisitions.** Le nombre d'**acquisitions** candidates est plafonné à `free_weapon_slots()` : deux slots libres donnent au plus deux acquisitions candidates, un slot libre une seule. Le tirage excédentaire est mélangé uniformément (Fisher-Yates avec le RNG de la run), jamais trié par DPS. Sans ce plafond, la part d'arme du panneau grandirait avec la taille du catalogue. Les niveaux ne sont pas plafonnés de la même manière : chaque arme portée sous son max est une candidate. Les deux ensembles réunis forment le pool d'arme, dont une seule ligne est tirée.
+
+**Reroll.** `RunConfig.reroll_base = 2`, plus un reroll aux niveaux 10 et 20 (`reroll_levels`). Un reroll reconstruit les trois offres, garde le panneau ouvert et ne rend pas le choix précédent. Il ne peut pas créer d'acquisition quand les slots sont pleins, mais il peut reproposer un niveau (tant qu'une arme portée est sous son max). Il partage le même compteur entre level-up et butin de boss.
+
+**Butin de boss.** Même panneau, poids `boss_loot_weapon_weight = 3,0` et `boss_loot_equipment_weight = 2,5`. Quand un poids d'arme explicite est fourni, il remplace **les deux** poids d'arme — acquisitions et niveaux. Toujours sans doublon, et les acquisitions restent plafonnées par les slots libres.
 
 ### 3.9 Périmètre de W2-E1
 
@@ -491,8 +495,11 @@ HPS     = RPS_w * E[H]
 
 ```text
 W_stat    = Σ(u ∈ améliorations) w_u
-W_weapon  = n_w * w_weapon
-n_w       = min(slots_libres, |pool| - armes_portées)
+W_new     = n_new * w_weapon
+n_new     = min(slots_libres, |pool| - armes_portées)
+W_upgrade = n_up * w_upgrade
+n_up      = |{armes portées dont le niveau < max_level}|
+W_weapon  = W_new + W_upgrade      ← une seule ligne d'arme (A2)
 W_equip   = w_equip * Σ(e ∈ équipement) poids_rareté(r_e)
 W_total   = W_stat + W_weapon + W_equip
 P_1(arme) = W_weapon / W_total
@@ -502,14 +509,19 @@ P_1(arme) = W_weapon / W_total
 |---|---|---|---|
 | `w_u` | float | 0,5–2,0 | Poids de chaque amélioration (1,0 dans les données actuelles). |
 | `w_weapon` | float | 1,0–2,0 | `RunConfig.weapon_offer_weight` (1,4). |
-| `n_w` | int | 0–2 | Armes candidates après plafond par slot libre. |
+| `n_new` | int | 0–2 | Acquisitions candidates après plafond par slot libre. |
+| `w_upgrade` | float | 0,8–2,0 | `RunConfig.weapon_upgrade_weight` (1,4). |
+| `n_up` | int | 0–3 | Armes portées sous leur niveau maximum. |
+| `W_weapon` | float | 0–4,2 | Poids cumulé des deux types de ligne d'arme ; une seule sera tirée (`n_new + n_up ≤ 3` tant qu'aucune arme n'est au max). |
 | `w_equip` | float | 0,5–2,0 | `RunConfig.equipment_offer_weight` (0,9). |
 | `poids_rareté` | float | 0,12–1,0 | `EquipmentData.RARITY_WEIGHTS`. |
 | `P_1(arme)` | float | 0–1 | Probabilité que le **premier** tirage du panneau soit une arme. |
 
-**Plage de sortie** — 0 quand `slots_libres = 0` (aucune arme candidate) ; au maximum quand `n_w = 2` et que le pool d'équipement est vide. Avec les données actuelles au départ (5 améliorations à 1,0, 2 armes candidates, 12 équipements de somme de rareté 7,29) : `W_stat = 5,0`, `W_weapon = 2,8`, `W_equip = 6,561`, `W_total = 14,361`, `P_1 = 19,5 %`. Avec un seul slot libre : `1,4 / 12,961 = 10,8 %`. La probabilité qu'au moins une arme apparaisse dans les trois tirages est mesurée par simulation en W2-E4 (cible : environ 48 % avec deux slots libres, 29 % avec un seul) ; aucune formule fermée n'est revendiquée.
+**Plage de sortie** — 0 quand aucune acquisition ni aucun niveau n'est candidat (trois armes portées au max) ; au maximum quand `W_weapon` domine un pool d'équipement vide. Avec les données actuelles au départ (5 améliorations à 1,0, 2 acquisitions + 1 niveau candidats, 12 équipements de somme de rareté 7,29) : `W_stat = 5,0`, `W_weapon = 4,2`, `W_equip = 6,561`, `W_total = 15,761`, `P_1 = 26,6 %`.
 
-**Exemple chiffré** — Départ de run, épée en main, deux slots libres : `P_1(arme) = 2,8 / 14,361 = 0,195`. Après trois armes portées : `n_w = 0`, `P_1(arme) = 0`.
+**Invariance voulue.** Comme `w_weapon = w_upgrade = 1,4` et que `slots_libres + armes_portées = 3`, `W_weapon` vaut `4,2` **quel que soit le loadout** tant qu'aucune arme n'est au max : une arme de départ (2 acquisitions + 1 niveau) pèse autant que trois armes montables (0 acquisition + 3 niveaux). La part d'arme du panneau ne dépend donc ni du nombre d'armes portées ni de la taille du catalogue. Elle ne baisse que quand une arme atteint son max : trois armes dont une au max donnent `2,8 / 14,361 = 19,5 %`. La probabilité qu'au moins une arme apparaisse dans les trois tirages est mesurée par simulation sur le vrai chemin d'offre (`tools/weapon_upgrade_sim.gd`, lot 1) : 10,4 panneaux sur 15 en politique aléatoire à poids 1,4, soit 69 % ; aucune formule fermée n'est revendiquée.
+
+**Exemple chiffré** — Départ de run, épée en main, deux slots libres : `P_1(arme) = (2 × 1,4 + 1 × 1,4) / 15,761 = 0,266`. Après trois armes portées, toutes montables : `(0 + 3 × 1,4) / 15,761 = 0,266`. Trois armes dont une au max : `2,8 / 14,361 = 0,195`. Toutes au max : `W_weapon = 0`, `P_1(arme) = 0`.
 
 ### Tableau 4.14 — DPS de référence à stats de base
 
@@ -540,8 +552,8 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | E4 | **L'arbalète traverse un ennemi déjà mort.** | L'ennemi mort est ignoré : il ne prend aucun dégât, **n'incrémente pas** le rang `k` et ne consomme pas de chute de perforation. Le carreau continue vers le prochain ennemi vivant. |
 | E5 | **Vol de vie sur un boss immunisé.** | Le boss est une élite (`EnemyData.is_elite = true`) : il prend les dégâts normaux, mais `H = 0`. Aucune erreur, aucun soin, le nombre de dégâts s'affiche normalement. Si un futur ennemi non élite doit être immunisé, on ajoute `EnemyData.lifesteal_immune` (défaut faux) plutôt que de changer la règle des élites. |
 | E6 | **Deux armes identiques portées.** | Impossible par les offres et par `Inventory.add_weapon` : `has_weapon` compare par `id`. Si un chemin de debug force l'ajout, la seconde est refusée. Deux `.tres` de même `id` sont un défaut de données ; le test de W2-E4 exige des `id` uniques. |
-| E7 | **Une arme est offerte alors que les trois slots sont pleins.** | Ne se produit pas : `_build_offers` ne crée aucune offre d'arme quand `free_weapon_slots() == 0`. Si un appelant force une offre, `Inventory.add_weapon` la refuse et l'offre est un no-op ; W2-E2 journalise un avertissement. Le joueur ne perd jamais un choix dans le flux normal. |
-| E8 | **Un reroll alors que les slots sont pleins.** | Le reroll reconstruit le panneau sans aucune ligne d'arme ; les améliorations et l'équipement restent disponibles. Le compteur de rerolls est débité normalement. |
+| E7 | **Une arme est offerte alors que les trois slots sont pleins.** | Ne se produit pas **pour une acquisition** : `_build_offers` n'en crée aucune quand `free_weapon_slots() == 0`. Les lignes de niveau, elles, restent proposées (E21). Si un appelant force une acquisition, `Inventory.add_weapon` la refuse et l'offre est un no-op ; W2-E2 journalise un avertissement. Le joueur ne perd jamais un choix dans le flux normal. |
+| E8 | **Un reroll alors que les slots sont pleins.** | Le reroll reconstruit le panneau sans aucune acquisition, mais peut y remettre une ligne de niveau si une arme portée est sous son max ; les améliorations et l'équipement restent disponibles. Le compteur de rerolls est débité normalement. |
 | E9 | **Le pool d'offres serait vide.** | Impossible : les cinq améliorations ne s'épuisent pas et restent candidates. Si un appelant vide le pool, `_build_offers` retourne un tableau vide, le panneau ne s'ouvre pas et le niveau reste acquis ; aucun blocage de boucle. |
 | E10 | **L'arc touche au contact.** | `t = 0` : multiplicateur ×1,0, jamais négatif. La distance est mesurée à l'impact, pas au tir ; une cible qui avance vers la flèche réduit le bonus. |
 | E11 | **La cible de l'encensoir meurt avant l'atterrissage.** | Le projectile atterrit à la dernière position connue de la cible et la mèche continue. S'il n'y avait aucune cible au lancer, l'encensoir part vers le point d'aimantation à portée et explose au bout de sa course. |
@@ -554,23 +566,28 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | E18 | **Un jeton `mechanic` inconnu.** | La ressource charge quand même. `has_known_mechanic()` retourne faux ; W2-E2 traite l'arme comme `cleave` et émet un `push_warning`. Le test de données de W2-E4 échoue sur tout jeton absent de `MECHANICS`. |
 | E19 | **Un projectile touche une cible pendant que le porteur change d'arme.** | Le projectile et le coup en vol capturent la `WeaponData` au moment du tir ; une modification d'inventaire ne change pas les dégâts d'un trait déjà parti. |
 | E20 | **`range_mult` et les mécaniques.** | `range_mult` multiplie `range_px` et `orbit_radius` ; il ne multiplie ni `fuse_radius`, ni `chain_jump_radius`. Une amélioration de portée ne doit pas agrandir un blast ou une chaîne sans le dire. |
+| E21 | **Une arme atteint son niveau maximum.** | Elle sort du pool de niveaux ; si rien ne reste, le panneau se replie sur les améliorations de stat (E9). Une offre `weapon_upgrade` forcée sur une arme au max est un no-op : `Inventory.upgrade_weapon` retourne faux et le niveau ne dépasse jamais `max_level`. |
+| E22 | **Une acquisition et un niveau dans le même panneau.** | Impossible par construction (A2) : une seule ligne d'arme par panneau. Une implémentation qui en montrerait deux échoue au test d'intégration, pas au hasard du tirage. |
+| E23 | **Un niveau est choisi pendant que l'arme frappe.** | Le coup déjà parti garde les dégâts calculés à son niveau de tir (E19) ; le niveau suivant s'applique au coup suivant. Le cooldown en cours n'est pas remis à zéro : monter une arme ne donne pas de coup gratuit. |
+| E24 | **Une arme est remplacée.** | `Inventory.replace_weapon` oublie le niveau de l'arme sortante ; la nouvelle entre au niveau 1. Le niveau appartient à l'arme, pas à l'emplacement. |
+| E25 | **Une nouvelle run démarre.** | `Inventory.setup_starting` vide `weapon_levels` : aucun niveau ne survit d'une run à l'autre, puisque la `WeaponData` est partagée. |
 
 ## Dependencies
 
 | Système | Sens | Ce que ce document attend | Propriétaire |
 |---|---|---|---|
-| `src/data/weapon_data.gd` | fournit | `mechanic`, `MECHANICS`, `has_known_mechanic()`, clés de localisation et champs de mécanique. Les quatre armes existantes gardent leurs valeurs. | W2-E1 (ce document) |
+| `src/data/weapon_data.gd` | fournit | `mechanic`, `MECHANICS`, `has_known_mechanic()`, clés de localisation et champs de mécanique, plus `max_level` et les trois `level_*_step` (lot 1). Les quatre armes existantes gardent leurs valeurs. | W2-E1 (ce document) |
 | `src/systems/weapon_system.gd`, `src/actors/projectile.gd` | consomme | Résolution des dix jetons, ciblage, résolution différée de la mèche, orbe, chaîne, perforation, vol de vie. Aucune mécanique n'est implémentée ici. | W2-E2 |
 | `src/data/catalogue.tres` | consomme | **Reste à 4 armes jusqu'à W2-E2.** W2-E2 ajoute les six armes et passe `EXPECTED_WEAPONS` à 10 dans le même changement. | W2-E2, test `data_catalogue_test.gd` |
 | `design/gdd/enemy-behaviors.md` | croisé | Les colonnes Marcheur à Invocateur, les annonces, `is_elite`, la préparation interruptible, `knockback_resistance`. Ce document ne modifie pas ce GDD ; son propriétaire doit citer `weapons.md` pour la matrice et l'interruption. | W1-E0 (`game-designer`) |
 | `design/gdd/classes.md` | croisé | Les armes de départ des trois classes pointent vers des `id` de ce document. Ne pas inventer un `id` d'arme hors de cette liste. | W3-E1 |
 | `design/gdd/systems-index.md` | croisé | Doit lister `weapons.md`. Un autre agent le crée ; ce document ne l'édite pas. | Orchestrateur / `game-designer` |
 | `EnemyData` | fournit | `max_hp`, `knockback_resistance`, `is_elite` (interruption et vol de vie), les états de préparation W1. | W1-E1/E2, W0-E3 |
-| `Stats` / `DamageCalc` | fournit | `damage_mult`, `attack_speed_mult`, `range_mult`, `crit_chance_bonus`, tirage de critique injecté. | existant |
-| `Inventory` | fournit | Trois slots, `has_weapon` par `id`, `free_weapon_slots`, `add_weapon`, `replace_weapon`. | existant |
+| `Stats` / `DamageCalc` | fournit | `damage_mult`, `attack_speed_mult`, `range_mult`, `crit_chance_bonus`, tirage de critique injecté, plus les méthodes à niveau explicite `weapon_damage(weapon, level)`, `weapon_attacks_per_second`, `weapon_range`, `level_*_multiplier` (lot 1). | existant, étendu par le lot 1 |
+| `Inventory` | fournit | Trois slots, `has_weapon` par `id`, `free_weapon_slots`, `add_weapon`, `replace_weapon`, plus `weapon_levels`, `level_of`, `upgrade_weapon`, `can_upgrade_weapon` (lot 1). | existant, étendu par le lot 1 |
 | `Player.heal` | fournit | Le vol de vie utilise l'API de soin existante, plafonnée par `stats.max_hp`. | existant |
-| `Offer` / `main.gd` / `hud.gd` | consomme | Nommer la mécanique dans l'offre, plafonner par slot, ne jamais offrir de doublon. W2-E2 modifie `Offer.for_weapon` et `_decorate_offer` ; W8-E2 branche les clés. | W2-E2, W8-E2 |
-| `RunConfig` | fournit | `weapon_offer_weight = 1,4`, `equipment_offer_weight = 0,9`, `reroll_base = 2`, `reroll_levels = [10, 20]`, poids de butin de boss. | W0-E3 |
+| `Offer` / `main.gd` / `hud.gd` | consomme | Nommer la mécanique dans l'offre, plafonner les acquisitions par slot, ne jamais offrir de doublon, une seule ligne d'arme par panneau. Le lot 1 ajoute `Offer.for_weapon_upgrade`, la décoration au niveau visé, `_upgrade_weapon` et le niveau dans le HUD. W2-E2 modifie `Offer.for_weapon` et `_decorate_offer` ; W8-E2 branche les clés. | W2-E2, W8-E2, lot 1 |
+| `RunConfig` | fournit | `weapon_offer_weight = 1,4`, `weapon_upgrade_weight = 1,4` (lot 1), `equipment_offer_weight = 0,9`, `reroll_base = 2`, `reroll_levels = [10, 20]`, poids de butin de boss. | W0-E3, lot 1 |
 | `docs/localization-standard.md` | fournit | Convention `weapon.<id>.name` / `weapon.<id>.desc`. Si le standard renomme le motif, W8-E2 met à jour les dix `.tres` en une passe. | W8-E1 |
 | `design/art/art-bible.md` | croisé | Silhouettes des six nouvelles armes, couleurs et formes. Les tokens `shape` de ce document sont des intentions ; l'art tranche. | W2-E3 |
 | W4 (boutique et prix) | consomme | Si un prix par rareté apparaît, la non-domination est prouvée **par palier de prix**, pas globalement. | W4-E1/E2 |
@@ -604,6 +621,7 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | `fuse_radius` | 70 | 50–90 | Sous 50, le blast ne couvre pas un paquet ; au-dessus de 90, l'encensoir remplace la faux. |
 | `lifesteal_ratio` | 0,25 | 0,15–0,35 | Sous 0,15, le soin ne compense pas le contact ; au-dessus de 0,35, la lame vampire devient obligatoire. |
 | `RunConfig.weapon_offer_weight` | 1,4 | 1,0–2,0 | Sous 1,0, les armes manquent ; au-dessus de 2,0, le panneau noie les améliorations. |
+| `RunConfig.weapon_upgrade_weight` | 1,4 | 0,8–2,0 | Sous 0,8, une arme portée monte à peine (1,6 niveau par run au tirage aléatoire) ; au-dessus de 2,0, la ligne d'arme écrase les stats et l'équipement. **À 1,4, acquisitions et niveaux pèsent le même poids par candidat** : la part d'arme du panneau devient indépendante du loadout (F13). |
 | `RunConfig.reroll_base` | 2 | 1–3 | 1 rend le reroll trop rare ; 3 le banalise. |
 | `RunConfig.reroll_levels` | [10, 20] | niveaux 8–12 et 18–22 | Trop tôt, le reroll remplace la décision de build ; trop tard, il ne sert plus. |
 
@@ -619,8 +637,13 @@ Chaque cas ci-dessous a un résultat déterministe et doit devenir un test en W2
 | AC4 | Aucune arme n'est strictement meilleure qu'une autre au même prix. | Encoder les verdicts de la §3.7 (`Très fort`=3, `Fort`=2, `Moyen`=1, `Faible`=0) et vérifier qu'aucune paire A,B ne satisfait « A ≥ B partout et A > B quelque part ». |
 | AC5 | Chaque arme a au moins une case `Fort` ou `Très fort` et au moins une case `Faible` dans la matrice. | Lecture automatique de la grille de verdicts ; échec sur une ligne uniforme. |
 | AC6 | Trois runs d'affilée proposent des builds différents. | Simulation de trois séquences d'offres avec trois graines, même classe : les ensembles finaux de trois armes diffèrent deux à deux (au moins une arme change). W2-E4. |
-| AC7 | Aucune arme n'est offerte quand les trois slots sont pleins ; aucun doublon n'est offert. | Test existant de plafond + test W2-E4 avec un inventaire plein et un inventaire contenant déjà l'arme. |
+| AC7 | Aucune arme n'est offerte **en acquisition** quand les trois slots sont pleins ; une arme au max n'est jamais offerte en niveau ; aucun doublon n'est offert. | Test existant de plafond (acquisitions) + test W2-E4 avec un inventaire plein et un inventaire contenant déjà l'arme ; `weapon_upgrade_offers_test.gd` pour le plafond de niveau. |
 | AC8 | Chaque offre d'arme nomme sa mécanique avant les nombres. | Générer une `Offer` pour chacune des dix armes et vérifier que la description contient le texte de `description`/`description_key` en tête. W2-E2. |
-| AC9 | Tous les cas limites E1–E20 ont un résultat déterministe et un test W2-E4. | Un test par cas, ou un test paramétré ; aucun cas sans assertion. |
+| AC9 | Tous les cas limites E1–E25 ont un résultat déterministe et un test. | Un test par cas, ou un test paramétré ; aucun cas sans assertion. |
 | AC10 | La matrice 10×10 est complète : 10 lignes, 10 colonnes, aucune case vide. | Lecture du tableau ; 100 cases non vides. |
 | AC11 | Le catalogue reste à 4 armes tant que W2-E2 n'a pas implémenté les mécaniques. | `data_catalogue_test.gd` : `EXPECTED_WEAPONS := 4` non modifié, suite verte. |
+| AC12 | Une arme portée sous `max_level` est reproposée comme niveau ; une arme au max ne l'est jamais ; un panneau ne porte qu'une ligne d'arme. | `tests/integration/weapon_upgrade_offers_test.gd` (8 tests) vert. |
+| AC13 | Le niveau est additif sur la base, appliqué avant les multiplicateurs globaux ; la cadence gagne 5 % par niveau ; le niveau 4 vaut ×1,75 dégâts. | `tests/unit/weapon_levels_test.gd` (12 tests) vert. |
+| AC14 | Le niveau est un état de run : remplacement et nouvelle run repartent au niveau 1. | `weapon_levels_test.gd` : remplacement, `setup_starting`, niveaux négatifs lus comme 1. |
+| AC15 | Le poids de niveau est choisi sur le vrai chemin d'offre, pas sur un modèle. | `tools/weapon_upgrade_sim.gd` : 200 runs × 15 panneaux × 2 politiques ; à 1,4, 10,4 lignes d'arme et 2,1 niveaux par run en aléatoire, 7,2 niveaux et 13,5 % de runs tout-au-max en greedy. |
+| AC16 | L'offre de niveau affiche le niveau visé et les nombres effectifs au niveau visé. | Test d'intégration : titre contient « niv. 2 », description contient « niv. 1 → 2 » et « DPS ». |

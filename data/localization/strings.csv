@@ -5,5 +5,11 @@ hud.hp,VIE,HP
 hud.wave,Vague,Wave
 hud.xp,XP,XP
 hud.level,NIV.,LVL
+hud.weapon_level,niv. %d,lvl %d
+offer.weapon_new,Arme : %s,Weapon: %s
+offer.weapon_upgrade,↑ %s +1 (niv. %d),↑ %s +1 (lvl %d)
+offer.weapon_levels,niv. %d → %d,lvl %d → %d
+offer.weapon_numbers,%d dégâts · %.1f att/s · %.0f DPS · portée %.0f px,%d damage · %.1f atk/s · %.0f DPS · range %.0f px
+offer.weapon_numbers_orbit,%d dégâts · %.1f contact/s par ennemi · %.1f DPS/ennemi · rayon %.0f px,%d damage · %.1f hit/s per enemy · %.1f DPS/enemy · radius %.0f px
 end.victory.title,Victoire !,Victory!
 end.defeat.title,Mort au combat,Slain in battle

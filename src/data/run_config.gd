@@ -19,6 +19,10 @@ extends Resource
 @export var joy_axis_deadzone: float = 0.25
 ## Relative weight of a new-weapon choice against a stat or equipment choice.
 @export var weapon_offer_weight: float = 1.4
+## Relative weight of a weapon-level choice against a stat or equipment choice.
+## A new weapon and an upgrade compete for the panel's single weapon row (A2),
+## so this is what decides how often a carried weapon levels up instead.
+@export var weapon_upgrade_weight: float = 1.4
 ## Relative weight of a common piece of equipment against a stat or weapon choice.
 @export var equipment_offer_weight: float = 0.9
 ## Rerolls the player starts the run with.

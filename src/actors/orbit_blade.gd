@@ -26,6 +26,9 @@ const DRAW_RADIUS := 9.0
 var weapon: WeaponData = null
 ## Player statistics, for damage and ring radius. Set by setup().
 var stats: Stats = null
+## Level of the weapon in this run. Set by setup(); the ring radius and the
+## contact damage both grow with it.
+var level: int = 1
 ## Roll source shared with the run, so crits stay deterministic. Set by setup().
 var rng: RandomNumberGenerator = null
 ## Node the moon orbits. Set by setup().
@@ -47,10 +50,12 @@ func setup(
 	run_stats: Stats,
 	run_rng: RandomNumberGenerator,
 	run_player: Player,
-	run_enemy_manager: EnemyManager
+	run_enemy_manager: EnemyManager,
+	run_level: int = 1
 ) -> void:
 	weapon = orbit_weapon
 	stats = run_stats
+	level = maxi(run_level, 1)
 	rng = run_rng
 	player = run_player
 	enemy_manager = run_enemy_manager
@@ -68,7 +73,11 @@ func step(delta: float) -> void:
 		# A new revolution starts: an enemy already hit is eligible again.
 		_turn_hits.clear()
 	_angle = fmod(_angle + spin, TAU)
-	position = Vector2.RIGHT.rotated(_angle) * weapon.orbit_radius * stats.range_mult
+	position = (
+		Vector2.RIGHT.rotated(_angle)
+		* weapon.orbit_radius
+		* stats.weapon_range_multiplier(weapon, level)
+	)
 
 	for enemy in _hit_cooldowns.keys():
 		var left := float(_hit_cooldowns[enemy]) - delta
@@ -94,7 +103,7 @@ func step(delta: float) -> void:
 
 ## Applies one contact and records it against both limits.
 func _strike(enemy: Enemy) -> void:
-	var hit := DamageCalc.roll(stats, weapon, rng)
+	var hit := DamageCalc.roll(stats, weapon, rng, level)
 	var amount := float(hit["amount"])
 	var is_crit := bool(hit["is_crit"])
 	enemy.take_damage(amount, is_crit)

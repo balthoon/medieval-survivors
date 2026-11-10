@@ -45,6 +45,20 @@ const MECHANICS := [
 ## legendaire, mythique. W2 offers every weapon at the same weight and the same
 ## price (one of the three weapon slots); rarity must never become a power tier.
 @export var rarity: String = "commun"
+## Highest level this weapon can reach. A weapon at this level leaves the
+## upgrade draw, so a panel never wastes a row on a capped weapon.
+@export var max_level: int = 4
+## Fraction of the base damage added per level above the first. Level 2 with
+## 0.25 deals x1.25 the level-1 damage; level 4 deals x1.75. The step is
+## additive on the base stat, then the player's global multipliers apply (see
+## [method Stats.weapon_damage]).
+@export var level_damage_step: float = 0.25
+## Fraction of the base cadence added per level above the first. A1 keeps this
+## at 0.05: cadence multiplies DPS, hit count and therefore every proc.
+@export var level_cadence_step: float = 0.05
+## Fraction of the base reach added per level above the first. Multiplies
+## range_px and orbit_radius, never fuse_radius or chain_jump_radius (GDD E20).
+@export var level_range_step: float = 0.05
 ## Base damage per hit, before the player's damage multiplier.
 @export var damage: float = 12.0
 ## Attacks per second, before the player's attack-speed multiplier.

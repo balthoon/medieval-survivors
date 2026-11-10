@@ -1,12 +1,13 @@
 ## One choice shown on the level-up panel.
 ##
-## Three kinds of choice share the same panel: a stat upgrade, a weapon, or a
-## piece of equipment. Exactly one of the payload fields is set, and [member kind]
-## says which. Pure data, so the panel and the choice logic stay testable.
+## Four kinds of choice share the same panel: a stat upgrade, a new weapon, a
+## weapon level, or a piece of equipment. Exactly one of the payload fields is
+## set, and [member kind] says which. Pure data, so the panel and the choice
+## logic stay testable.
 class_name Offer
 extends RefCounted
 
-## Kind of choice: "stat", "weapon" or "equipment".
+## Kind of choice: "stat", "weapon", "weapon_upgrade" or "equipment".
 var kind: String = "stat"
 ## Relative weight when rolling the three choices, set by the caller.
 var weight: float = 1.0
@@ -16,8 +17,10 @@ var title: String = ""
 var description: String = ""
 ## Set when kind is "stat".
 var stat_upgrade: UpgradeData = null
-## Set when kind is "weapon".
+## Set when kind is "weapon" or "weapon_upgrade".
 var weapon: WeaponData = null
+## Level the weapon reaches if this upgrade is chosen. One for a new weapon.
+var target_level: int = 1
 ## Set when kind is "equipment".
 var equipment: EquipmentData = null
 
@@ -39,9 +42,27 @@ static func for_weapon(new_weapon: WeaponData) -> Offer:
 	var offer := Offer.new()
 	offer.kind = "weapon"
 	offer.weapon = new_weapon
+	offer.target_level = 1
 	if new_weapon != null:
-		offer.title = "Arme : %s" % new_weapon.display_name
+		offer.title = Loc.format("offer.weapon_new", "Arme : %s", [new_weapon.display_name])
 		offer.description = new_weapon.description
+	return offer
+
+
+## Builds a weapon-level choice. The description starts as the weapon's own
+## pitch; main rewrites it with the numbers the next level actually reaches.
+static func for_weapon_upgrade(carried: WeaponData, level: int) -> Offer:
+	var offer := Offer.new()
+	offer.kind = "weapon_upgrade"
+	offer.weapon = carried
+	offer.target_level = maxi(level, 1)
+	if carried != null:
+		offer.title = Loc.format(
+			"offer.weapon_upgrade",
+			"↑ %s +1 (niv. %d)",
+			[carried.display_name, offer.target_level]
+		)
+		offer.description = carried.description
 	return offer
 
 

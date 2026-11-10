@@ -99,6 +99,11 @@ func test_empty_candidate_pool_falls_back_to_an_offer() -> void:
 	main._upgrades.clear()
 	main._weapon_pool.clear()
 	main._equipment_pool.clear()
+	# A carried weapon below its max level is a candidate by itself (lot 1), so
+	# cap every one of them: nothing at all must remain applicable.
+	for carried in main._inventory.weapons:
+		if carried != null:
+			main._inventory.weapon_levels[carried.id] = maxi(carried.max_level, 1)
 
 	# Act
 	var offers: Array[Offer] = main._build_offers(3)
@@ -124,6 +129,11 @@ func test_level_is_not_consumed_when_no_offer_exists() -> void:
 	# Replace the catalogue and re-copy it: no upgrade, no fallback, no content.
 	main.catalogue = Catalogue.new()
 	main._load_data()
+	# A carried weapon below its max level is a candidate by itself (lot 1), so
+	# cap every one of them or the panel is never empty.
+	for carried in main._inventory.weapons:
+		if carried != null:
+			main._inventory.weapon_levels[carried.id] = maxi(carried.max_level, 1)
 	main.is_paused = false
 	main._dead = false
 	main._level = 1

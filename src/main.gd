@@ -412,10 +412,16 @@ func _offer_boss_loot() -> void:
 	_refresh_hud()
 
 
-## Builds the level-up choices: stat upgrades, new weapons when a slot is free,
-## and equipment. Sampled without replacement, weighted per kind. Equipment is
-## weighted by rarity, and a piece that would replace the equipped one with the
-## same stat for less is never offered — the panel must not hide a downgrade.
+## Builds the level-up choices: stat upgrades, weapon rows and equipment.
+## Sampled without replacement, weighted per kind. Equipment is weighted by
+## rarity, and a piece that would replace the equipped one with the same stat
+## for less is never offered — the panel must not hide a downgrade.
+##
+## Weapon rows carry two kinds of choice: a weapon not yet carried, when a slot
+## is free, and a level for a carried weapon below its maximum. They compete for
+## one row (A2): two weapon rows in one panel are one choice and one wasted row,
+## and with a single free slot a second acquisition row would be the same weapon
+## twice.
 ##
 ## A stat at its ceiling is never offered either, and a fully filtered pool
 ## falls back to [member Catalogue.fallback_upgrade], so a level-up always has
@@ -424,14 +430,18 @@ func _offer_boss_loot() -> void:
 ## [param weapon_weight] and [param equipment_weight] override the normal kind
 ## weights, which is how the boss loot panel leans its offers toward gear. A
 ## negative value means "use the run tuning": GDScript default arguments must be
-## constant, so they cannot name [member RunConfig] fields directly.
+## constant, so they cannot name [member RunConfig] fields directly. An explicit
+## weapon weight also replaces the upgrade weight, so the boss loot leans on
+## weapon levels exactly as it leans on new weapons.
 func _build_offers(
 	count: int,
 	weapon_weight: float = -1.0,
 	equipment_weight: float = -1.0
 ) -> Array[Offer]:
-	if weapon_weight < 0.0:
+	var weapon_weight_overridden := weapon_weight >= 0.0
+	if not weapon_weight_overridden:
 		weapon_weight = _config.weapon_offer_weight
+	var upgrade_weight := weapon_weight if weapon_weight_overridden else _config.weapon_upgrade_weight
 	if equipment_weight < 0.0:
 		equipment_weight = _config.equipment_offer_weight
 	var candidates: Array[Offer] = []
@@ -444,21 +454,33 @@ func _build_offers(
 		candidates.append(stat_offer)
 
 	var free_slots := _inventory.free_weapon_slots()
+	var new_weapon_offers: Array[Offer] = []
 	if free_slots > 0:
-		var weapon_offers: Array[Offer] = []
 		for weapon in _weapon_pool:
 			if weapon == null or _inventory.has_weapon(weapon):
 				continue
 			var weapon_offer := Offer.for_weapon(weapon)
 			weapon_offer.weight = weapon_weight
 			_decorate_offer(weapon_offer)
-			weapon_offers.append(weapon_offer)
-		# One weapon per free slot at most: a third weapon row in a panel with one
-		# slot left is the same choice printed twice.
-		if weapon_offers.size() > free_slots:
-			_shuffle(weapon_offers)
-			weapon_offers.resize(free_slots)
-		candidates.append_array(weapon_offers)
+			new_weapon_offers.append(weapon_offer)
+		# One acquisition per free slot at most: without the cap, a large
+		# catalogue would scale the weapon row's share of the pool with the number
+		# of weapons it happens to hold.
+		if new_weapon_offers.size() > free_slots:
+			_shuffle(new_weapon_offers)
+			new_weapon_offers.resize(free_slots)
+	var weapon_offers: Array[Offer] = new_weapon_offers
+	for weapon in _inventory.weapons:
+		if weapon == null or not _inventory.can_upgrade_weapon(weapon):
+			continue
+		var upgrade_offer := Offer.for_weapon_upgrade(weapon, _inventory.level_of(weapon) + 1)
+		upgrade_offer.weight = upgrade_weight
+		_decorate_offer(upgrade_offer)
+		weapon_offers.append(upgrade_offer)
+	# Every candidate carries its own weight into the draw; _pick_weighted drops
+	# the remaining weapon rows once one is picked, so a panel shows at most one
+	# (A2) without shrinking the weapon row's share of the pool to a single draw.
+	candidates.append_array(weapon_offers)
 
 	for item in _equipment_pool:
 		if item == null or _stat_offer_is_dead(item.stat):
@@ -520,33 +542,12 @@ func _fallback_offer() -> Offer:
 func _decorate_offer(offer: Offer) -> void:
 	if offer == null or _player == null or _player.stats == null:
 		return
-	var stats := _player.stats
 
 	match offer.kind:
 		"weapon":
-			var weapon := offer.weapon
-			if weapon == null:
-				return
-			var damage := stats.weapon_damage(weapon)
-			var cadence := stats.weapon_attacks_per_second(weapon)
-			var crit := stats.weapon_crit_chance(weapon)
-			var dps := damage * cadence * (1.0 + crit * (weapon.crit_multiplier - 1.0))
-			var numbers := "%d dégâts · %.1f att/s · %.0f DPS · portée %.0f px" % [
-				int(round(damage)), cadence, dps, stats.weapon_range(weapon)
-			]
-			# The orbit has no cadence of its own: its rate is one contact per
-			# enemy per revolution, capped by the per-enemy cooldown (GDD §3.4).
-			if weapon.mechanic == &"orbit":
-				var turn := TAU / maxf(weapon.orbit_speed, 0.001)
-				cadence = minf(1.0 / turn, 1.0 / maxf(weapon.orbit_hit_cooldown, 0.001))
-				dps = damage * cadence
-				numbers = "%d dégâts · %.1f contact/s par ennemi · %.1f DPS/ennemi · rayon %.0f px" % [
-					int(round(damage)), cadence, dps, weapon.orbit_radius * stats.range_mult
-				]
-			offer.description = (
-				numbers if weapon.description.is_empty()
-				else "%s — %s" % [weapon.description, numbers]
-			)
+			_write_weapon_description(offer, offer.weapon, 1)
+		"weapon_upgrade":
+			_write_weapon_description(offer, offer.weapon, offer.target_level, true)
 		"equipment":
 			var item := offer.equipment
 			if item == null:
@@ -556,6 +557,61 @@ func _decorate_offer(offer: Offer) -> void:
 			if current != null:
 				text += " · remplace %s (%s)" % [current.display_name, current.effect_text()]
 			offer.description = text
+
+
+## Rewrites [param offer]'s description with the weapon's pitch and the numbers
+## that apply at [param level]. An upgrade also names the level it moves from and
+## to, so the row reads as a step rather than as a second copy of the weapon.
+func _write_weapon_description(
+	offer: Offer, weapon: WeaponData, level: int, is_upgrade: bool = false
+) -> void:
+	if weapon == null:
+		return
+	var numbers := _weapon_numbers(weapon, level)
+	if is_upgrade:
+		numbers = "%s · %s" % [
+			Loc.format("offer.weapon_levels", "niv. %d → %d", [maxi(level - 1, 1), level]),
+			numbers,
+		]
+	offer.description = (
+		numbers if weapon.description.is_empty()
+		else "%s — %s" % [weapon.description, numbers]
+	)
+
+
+## Effective numbers of [param weapon] at [param level], as the offer panel
+## prints them.
+func _weapon_numbers(weapon: WeaponData, level: int) -> String:
+	var stats := _player.stats
+	var damage := stats.weapon_damage(weapon, level)
+	var cadence := stats.weapon_attacks_per_second(weapon, level)
+	var crit := stats.weapon_crit_chance(weapon)
+	var dps := damage * cadence * (1.0 + crit * (weapon.crit_multiplier - 1.0))
+	# The whole line goes through Loc, not just the level segment: a template
+	# translated on its own would print "lvl 1 → 2 · 12 dégâts" on an English
+	# client, one row in two languages.
+	var numbers := Loc.format(
+		"offer.weapon_numbers",
+		"%d dégâts · %.1f att/s · %.0f DPS · portée %.0f px",
+		[int(round(damage)), cadence, dps, stats.weapon_range(weapon, level)]
+	)
+	# The orbit has no cadence of its own: its rate is one contact per
+	# enemy per revolution, capped by the per-enemy cooldown (GDD §3.4).
+	if weapon.mechanic == &"orbit":
+		var turn := TAU / maxf(weapon.orbit_speed, 0.001)
+		cadence = minf(1.0 / turn, 1.0 / maxf(weapon.orbit_hit_cooldown, 0.001))
+		dps = damage * cadence
+		numbers = Loc.format(
+			"offer.weapon_numbers_orbit",
+			"%d dégâts · %.1f contact/s par ennemi · %.1f DPS/ennemi · rayon %.0f px",
+			[
+				int(round(damage)),
+				cadence,
+				dps,
+				weapon.orbit_radius * stats.weapon_range_multiplier(weapon, level),
+			]
+		)
+	return numbers
 
 
 ## Picks [param count] distinct offers, each draw weighted by [member Offer.weight].
@@ -585,6 +641,8 @@ func _pick_weighted(pool: Array[Offer], count: int) -> Array[Offer]:
 		remaining.remove_at(chosen_index)
 		if chosen.kind == "equipment" and chosen.equipment != null:
 			remaining = _without_slot(remaining, chosen.equipment.slot)
+		elif chosen.kind == "weapon" or chosen.kind == "weapon_upgrade":
+			remaining = _without_weapon_rows(remaining)
 	return picked
 
 
@@ -598,8 +656,19 @@ func _without_slot(pool: Array[Offer], slot: String) -> Array[Offer]:
 	return kept
 
 
-## Fisher-Yates shuffle driven by the run's roll source, so the trimmed weapon
-## offers are as reproducible as any other roll.
+## Returns [param pool] without any other weapon row. A panel carries one weapon
+## row at most (A2), whether it is an acquisition or a level.
+func _without_weapon_rows(pool: Array[Offer]) -> Array[Offer]:
+	var kept: Array[Offer] = []
+	for offer in pool:
+		if offer.kind == "weapon" or offer.kind == "weapon_upgrade":
+			continue
+		kept.append(offer)
+	return kept
+
+
+## Fisher-Yates shuffle driven by the run's roll source, so which acquisition
+## candidates survive the free-slot cap is as reproducible as any other roll.
 func _shuffle(pool: Array[Offer]) -> void:
 	for index in range(pool.size() - 1, 0, -1):
 		var swap := _rng.randi_range(0, index)
@@ -649,6 +718,8 @@ func _apply_offer(offer: Offer) -> void:
 	match offer.kind:
 		"weapon":
 			_gain_weapon(offer.weapon)
+		"weapon_upgrade":
+			_upgrade_weapon(offer.weapon)
 		"equipment":
 			_gain_equipment(offer.equipment)
 		_:
@@ -664,11 +735,21 @@ func _apply_stat_upgrade(upgrade: UpgradeData) -> void:
 	_recompute_stats()
 
 
-## Adds a weapon and gives it its own timer and view.
+## Adds a weapon at level 1 and gives it its own timer and view.
 func _gain_weapon(weapon: WeaponData) -> void:
 	if weapon == null:
 		return
 	if not _inventory.add_weapon(weapon):
+		return
+	_weapon_system.refresh()
+
+
+## Raises one carried weapon's level. A level changes reach, so the view and the
+## orbit are rebuilt; refresh() keeps every existing cooldown untouched.
+func _upgrade_weapon(weapon: WeaponData) -> void:
+	if weapon == null:
+		return
+	if not _inventory.upgrade_weapon(weapon):
 		return
 	_weapon_system.refresh()
 
@@ -869,11 +950,19 @@ func _refresh_hud() -> void:
 		_wave_director.wave_index, _wave_director.time_left(), _wave_director.wave_progress()
 	)
 	_hud.update_weapons(
-		_inventory.weapons, _weapon_cooldown_ratios(), _weapon_cooldown_seconds()
+		_inventory.weapons, _weapon_levels(), _weapon_cooldown_ratios(), _weapon_cooldown_seconds()
 	)
 	_hud.update_equipment(_inventory)
 	if _boss != null and is_instance_valid(_boss) and _boss.hp > 0.0:
 		_hud.update_boss(_boss.hp, _boss.max_hp)
+
+
+## Level of every carried weapon, in inventory order, consumed by the HUD.
+func _weapon_levels() -> Array[int]:
+	var levels: Array[int] = []
+	for weapon in _inventory.weapons:
+		levels.append(_inventory.level_of(weapon))
+	return levels
 
 
 ## Recharge fraction of every weapon, in 0..1, consumed by the HUD bars.

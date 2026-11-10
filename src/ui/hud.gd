@@ -147,8 +147,15 @@ func update_wave(wave_index: int, seconds_left: float, progress: float) -> void:
 
 
 ## Refreshes the three weapon rows. Each bar fills as that weapon recharges:
-## the ratio is 0 when the weapon is ready and 1 right after firing.
-func update_weapons(weapons: Array[WeaponData], ratios: Array[float], seconds: Array[float]) -> void:
+## the ratio is 0 when the weapon is ready and 1 right after firing. A carried
+## weapon also shows its level, so an upgrade taken on the panel is visible
+## without opening the panel again.
+func update_weapons(
+	weapons: Array[WeaponData],
+	levels: Array[int],
+	ratios: Array[float],
+	seconds: Array[float]
+) -> void:
 	for index in _weapon_labels.size():
 		var label := _weapon_labels[index]
 		var status := _weapon_statuses[index]
@@ -167,6 +174,11 @@ func update_weapons(weapons: Array[WeaponData], ratios: Array[float], seconds: A
 			continue
 
 		label.text = weapons[index].display_name
+		if index < levels.size():
+			label.text = "%s · %s" % [
+				weapons[index].display_name,
+				Loc.format("hud.weapon_level", "niv. %d", [levels[index]]),
+			]
 
 		var ratio := 0.0
 		if index < ratios.size():
