@@ -85,6 +85,11 @@ mute={
 ])
 }
 
+[internationalization]
+
+locale/fallback="fr"
+locale/translations=PackedStringArray("res://data/localization/strings.fr.translation", "res://data/localization/strings.en.translation")
+
 [rendering]
 
 environment/defaults/default_clear_color=Color(0.93, 0.9, 0.82, 1)

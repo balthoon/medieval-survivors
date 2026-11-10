@@ -1,0 +1,9 @@
+keys,fr,en
+game.title,Medieval Survivors,Medieval Survivors
+game.tagline,Un conte de survie médiévale,
+hud.hp,VIE,HP
+hud.wave,Vague,Wave
+hud.xp,XP,XP
+hud.level,NIV.,LVL
+end.victory.title,Victoire !,Victory!
+end.defeat.title,Mort au combat,Slain in battle

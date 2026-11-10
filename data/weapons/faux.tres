@@ -1,0 +1,24 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "faux"
+display_name = "Faux"
+name_key = "weapon.faux.name"
+description = "Entaille circulaire : un tour complet touche tout ce qui entoure le porteur."
+description_key = "weapon.faux.desc"
+kind = "melee"
+shape = "scythe"
+mechanic = &"whirl"
+rarity = "peu_commun"
+damage = 14.0
+attacks_per_second = 0.9
+range_px = 58.0
+arc_degrees = 360.0
+swing_duration = 0.28
+crit_chance = 0.04
+crit_multiplier = 2.0
+knockback = 18.0
+color = Color(0.55, 0.52, 0.48, 1)

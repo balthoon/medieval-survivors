@@ -1,0 +1,26 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "arbalete"
+display_name = "Arbalète"
+name_key = "weapon.arbalete.name"
+description = "Carreau perforant : traverse les ennemis en ligne, chaque cible suivante a 85 % des dégâts."
+description_key = "weapon.arbalete.desc"
+kind = "projectile"
+shape = "crossbow"
+mechanic = &"pierce"
+rarity = "rare"
+damage = 18.0
+attacks_per_second = 0.8
+range_px = 380.0
+arc_degrees = 0.0
+swing_duration = 0.0
+crit_chance = 0.06
+crit_multiplier = 2.2
+knockback = 16.0
+projectile_speed = 780.0
+color = Color(0.45, 0.32, 0.2, 1)
+pierce_falloff = 0.85

@@ -1,0 +1,25 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "lame_vampire"
+display_name = "Lame vampire"
+name_key = "weapon.lame_vampire.name"
+description = "Vol de vie : rend 25 % des dégâts réellement infligés. Les élites n'en rendent rien."
+description_key = "weapon.lame_vampire.desc"
+kind = "melee"
+shape = "blade"
+mechanic = &"lifesteal"
+rarity = "rare"
+damage = 11.0
+attacks_per_second = 1.5
+range_px = 58.0
+arc_degrees = 80.0
+swing_duration = 0.11
+crit_chance = 0.06
+crit_multiplier = 2.0
+knockback = 18.0
+color = Color(0.48, 0.18, 0.22, 1)
+lifesteal_ratio = 0.25

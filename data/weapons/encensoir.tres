@@ -1,0 +1,27 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "encensoir"
+display_name = "Encensoir"
+name_key = "weapon.encensoir.name"
+description = "Détonation retardée : posé au sol, il explose après 0,9 s dans un rayon de 70 px."
+description_key = "weapon.encensoir.desc"
+kind = "projectile"
+shape = "censer"
+mechanic = &"fuse"
+rarity = "peu_commun"
+damage = 22.0
+attacks_per_second = 0.55
+range_px = 220.0
+arc_degrees = 0.0
+swing_duration = 0.0
+crit_chance = 0.05
+crit_multiplier = 2.0
+knockback = 30.0
+projectile_speed = 300.0
+color = Color(0.62, 0.48, 0.30, 1)
+fuse_seconds = 0.9
+fuse_radius = 70.0

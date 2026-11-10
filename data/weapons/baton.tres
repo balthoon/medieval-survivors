@@ -1,0 +1,27 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/weapon_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "baton"
+display_name = "Bâton"
+name_key = "weapon.baton.name"
+description = "Chaîne : le coup saute jusqu'à deux ennemis proches, chaque saut à 75 %."
+description_key = "weapon.baton.desc"
+kind = "melee"
+shape = "staff"
+mechanic = &"chain"
+rarity = "rare"
+damage = 10.0
+attacks_per_second = 1.1
+range_px = 72.0
+arc_degrees = 40.0
+swing_duration = 0.14
+crit_chance = 0.05
+crit_multiplier = 2.0
+knockback = 10.0
+color = Color(0.52, 0.38, 0.22, 1)
+chain_jumps = 2
+chain_jump_radius = 90.0
+chain_falloff = 0.75

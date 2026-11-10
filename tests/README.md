@@ -41,8 +41,9 @@ supprimés. Correspondance :
 | — | `unit/harness_bootstrap_test.gd` | 1 | le harnais lui-même : découverte, assertion, code de sortie |
 | — | `unit/run_config_test.gd` | 3 | `data/run_config.tres` se charge ; courbe d'XP (5, 4) et paliers de boss (0.9, 0.35) inchangés par W0-E3 |
 | — | `unit/input_map_test.gd` | 6 | les dix actions de run existent ; les lettres sont liées en **physique** (A/D/W/S = ZQSD sur AZERTY) ; axes de manette ; zone morte = `RunConfig.joy_axis_deadzone` ; une touche logique Q ne déclenche pas `move_left` |
+| — | `unit/localization_test.gd` | 7 | les ressources `.translation` de `project.godot` sont enregistrées ; une clé se traduit en français et en anglais ; une clé absente de l'anglais retombe sur le français ; une locale sans traduction retombe sur `fr` |
 
-**Total : 58 tests, 11 suites.**
+**Total : 65 tests, 12 suites.**
 
 ## Conventions
 
