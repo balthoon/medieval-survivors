@@ -36,14 +36,19 @@ supprimés. Correspondance :
 | `verify_slice04.gd` (règles) | `integration/boss_rules_test.gd` | 10 | câblage boss ; cadence toutes les 5 vagues ; paliers de scaling ; télégraphe ; portée du slam ; résistance au recul ; spawner qui ignore le boss ; finish line ; pas de doublon de slot ; plafond d'offres d'armes |
 | `verify_slice04.gd` (combat) | `integration/boss_fight_test.gd` | 3 | apparition d'un unique boss palier 0 + barre ; dégâts du slam dans le rayon seulement ; mort du boss → butin |
 | — | `integration/main_scene_bootstrap_test.gd` | 1 | la scène principale expose `Player` et `EnemyManager` |
-| — | `integration/data_catalogue_test.gd` | 7 | `data/catalogue.tres` énumère tout le contenu (3 ennemis, 1 boss, 4 armes, équipement, améliorations, vagues, classe) et le charge |
+| — | `integration/data_catalogue_test.gd` | 8 | `data/catalogue.tres` énumère tout le contenu (3 ennemis, 1 boss, 10 armes, équipement, améliorations, vagues, classe) et le charge ; chaque arme a un id unique et un `mechanic` connu |
 | — | `integration/spawner_unlock_test.gd` | 7 | les déverrouillages pointent sur `EnemyData.id`, jamais sur `display_name` ; renommer l'un ne déverrouille pas l'autre |
+| — | `integration/weapon_mechanics_test.gd` | 13 | les dix mécaniques W2-E2 : bonus de portée de l'arc, falloff de l'arbalète, projectile perforant vs simple, refund d'exécution, chaîne, tour complet de la faux, vol de vie (normal et refusé sur élite), orbe une fois par tour, mèche de l'encensoir, stagger (immunité des élites), description d'offre nommant la mécanique |
 | — | `unit/harness_bootstrap_test.gd` | 1 | le harnais lui-même : découverte, assertion, code de sortie |
 | — | `unit/run_config_test.gd` | 3 | `data/run_config.tres` se charge ; courbe d'XP (5, 4) et paliers de boss (0.9, 0.35) inchangés par W0-E3 |
 | — | `unit/input_map_test.gd` | 6 | les dix actions de run existent ; les lettres sont liées en **physique** (A/D/W/S = ZQSD sur AZERTY) ; axes de manette ; zone morte = `RunConfig.joy_axis_deadzone` ; une touche logique Q ne déclenche pas `move_left` |
 | — | `unit/localization_test.gd` | 7 | les ressources `.translation` de `project.godot` sont enregistrées ; une clé se traduit en français et en anglais ; une clé absente de l'anglais retombe sur le français ; une locale sans traduction retombe sur `fr` |
+| — | `unit/obstacle_field_test.gd` | 12 | le champ de collision des décors (lot 1) : point libre inchangé ; poussée cercle et rectangle à la distance de contact exacte ; sortie par la face la plus proche ; `slide` libre, diagonal (composante tangentielle gardée) et frontal (coup de pouce latéral) ; formes invalides ignorées ; `PilotArenas.obstacle_field()` = 22 cercles (9 troncs, 12 rochers, 1 autel) et 1 rectangle (tronc tombé), buissons absents ; `VisualPilot` en storybook par défaut et son champ délègue à `PilotArenas` |
+| — | `integration/obstacle_collision_test.gd` | 3 | la scène principale partage un unique champ non vide entre le joueur et `EnemyManager` ; un tronc bloque le chevalier poussé vers la droite et ne le laisse jamais dedans ; un squelette apparu au centre d'un tronc est résolu dehors |
+| — | `unit/actor_animations_test.gd` | 12 | les minuteries du lot 2 (ADR-0003) : phase de marche figée à l'arrêt, avancée en mouvement, bornée à `[0, TAU)` ; lunge armé sur l'angle de tir, décroît à zéro sans devenir négatif ; ni marche ni lunge ne déplace `position` ; `DeathFade.create` copie art/rayon/teinte, mi-durée = moitié écrasé et moitié transparent, fin = `END_SCALE`, alpha 0, `queue_free` ; `step_visual` avance le temps du dandinement sans déplacer le corps ; phase déterministe dérivée du point d'apparition |
+| — | `integration/animation_wiring_test.gd` | 3 | la vraie scène relie `WeaponSystem.attack_started` à `Player.play_attack_lunge` (temps et direction) ; `remove_dead` crée exactement un `DeathFade` à l'endroit de la mort, retire l'ennemi et rend son XP ; `step_all` avance l'horloge d'animation d'un ennemi vivant tout en le faisant avancer |
 
-**Total : 65 tests, 12 suites.**
+**Total : 109 tests, 17 suites.**
 
 ## Conventions
 

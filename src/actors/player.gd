@@ -21,6 +21,22 @@ const INVULNERABLE_TIME := 0.4
 ## Blink rate of the body while invulnerable, in toggles per second.
 const BLINK_HZ := 12.0
 
+## Seconds the body leans toward a firing weapon after it shoots.
+const LUNGE_DURATION := 0.12
+
+## Pixels the body is displaced toward the firing direction at the start of a
+## lunge. The lean eases out, so it is already fading on the second frame.
+const LUNGE_DISTANCE := 4.0
+
+## Rate at which the walk phase advances while the player moves, in cycles per
+## second. The bounce is the rectified sine of this phase, so the knight touches
+## down twice per phase cycle.
+const WALK_PHASE_HZ := 8.0
+
+## Peak height of the walk bounce, in pixels. Negative y is up, matching the
+## breathing offset.
+const WALK_BOUNCE := 2.5
+
 ## Copy of the run stats. Set by setup().
 var stats: Stats = null
 ## Current hit points.
@@ -38,6 +54,15 @@ var _blink_time: float = 0.0
 var _blink_on: bool = true
 ## Seconds since the run started, used only by the breathing offset.
 var _anim_time: float = 0.0
+## True while the last step_movement() call carried input. step() reads it to
+## advance the walk phase only on frames the player actually moved.
+var _is_walking: bool = false
+## Radians accumulated by the walk cycle. Frozen while the player stands still.
+var _walk_phase: float = 0.0
+## Seconds left of the attack lunge. Zero when the body sits centred.
+var _lunge_time: float = 0.0
+## Unit direction of the current lunge, copied from the firing angle.
+var _lunge_direction: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
@@ -49,7 +74,18 @@ func _ready() -> void:
 func _draw() -> void:
 	if not _blink_on:
 		return
-	ActorArt.draw_knight(self, _view(), RADIUS, InkStyle.breathe(_anim_time))
+	var bob := InkStyle.breathe(_anim_time)
+	if _is_walking:
+		bob += -absf(sin(_walk_phase)) * WALK_BOUNCE
+	var is_lunging := _lunge_time > 0.0
+	if is_lunging:
+		# The lean lives in the draw transform, never in position: collision,
+		# obstacle resolution and the weapons' attach point must not move.
+		var remaining := _lunge_time / LUNGE_DURATION
+		draw_set_transform(_lunge_direction * (LUNGE_DISTANCE * remaining * remaining))
+	ActorArt.draw_knight(self, _view(), RADIUS, bob)
+	if is_lunging:
+		draw_set_transform(Vector2.ZERO)
 
 
 ## Which of the four drawn orientations matches the current facing. The
@@ -71,11 +107,21 @@ func setup(class_data: ClassData) -> void:
 
 ## Moves the player by dir scaled by the effective move speed. Arguments: dir is
 ## a normalised Vector2 (zero allowed), delta in seconds. Clamps inside the
-## playable rect.
+## playable rect. Also records whether this frame carried input, so step() can
+## advance the walk cycle only while the knight is actually walking.
 func step_movement(dir: Vector2, delta: float) -> void:
 	if stats == null:
+		_is_walking = false
 		return
+	_is_walking = dir.length_squared() > 0.0
 	position += dir * stats.effective_move_speed() * delta
+	clamp_inside()
+
+
+## Keeps the player's centre RADIUS inside [constant PLAY_RECT]. Called after
+## movement and, from main.gd, after obstacle resolution, so neither the arena
+## edge nor a prop can leave the knight outside the playable area.
+func clamp_inside() -> void:
 	position.x = clampf(
 		position.x, PLAY_RECT.position.x + RADIUS, PLAY_RECT.end.x - RADIUS
 	)
@@ -84,10 +130,14 @@ func step_movement(dir: Vector2, delta: float) -> void:
 	)
 
 
-## Advances the invulnerability window, the breathing offset and the blink.
-## Display feedback only: the weapons stay visible and the player keeps moving.
+## Advances the invulnerability window, the breathing offset, the walk cycle, the
+## attack lunge and the blink. Display feedback only: the weapons stay visible
+## and the player keeps moving.
 func step(delta: float) -> void:
 	_anim_time += delta
+	if _is_walking:
+		_walk_phase = fposmod(_walk_phase + delta * TAU * WALK_PHASE_HZ, TAU)
+	_lunge_time = maxf(_lunge_time - delta, 0.0)
 	queue_redraw()
 	if invulnerable_time <= 0.0:
 		return
@@ -96,6 +146,15 @@ func step(delta: float) -> void:
 	_blink_on = int(_blink_time * BLINK_HZ) % 2 == 0
 	if invulnerable_time <= 0.0:
 		_blink_on = true
+
+
+## Leans the body toward an attack fired along [param angle] for
+## [constant LUNGE_DURATION] seconds. Visual feedback only: the node position
+## never changes, so collision, obstacle resolution and the weapons' attach point
+## are unaffected.
+func play_attack_lunge(angle: float) -> void:
+	_lunge_time = LUNGE_DURATION
+	_lunge_direction = Vector2.RIGHT.rotated(angle)
 
 
 ## Points the player toward a world position.

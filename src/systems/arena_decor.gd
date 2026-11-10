@@ -23,6 +23,9 @@ const EDGE_MARGIN := 10.0
 ## Radius of the ink outline around every enemy-like solid prop, in pixels.
 const INK_WIDTH := 2.0
 
+## Routes drawing to the shipped storybook renderer.
+const VisualPilot := preload("res://src/art/visual_pilot.gd")
+
 ## Number of large light-and-dark grass patches.
 const LIGHT_PATCHES := 14
 const DARK_PATCHES := 10
@@ -94,6 +97,10 @@ const ROCKS := [
 
 
 func _draw() -> void:
+	if VisualPilot.is_active():
+		VisualPilot.draw_arena(self)
+		return
+
 	var rng := RandomNumberGenerator.new()
 	rng.seed = DECOR_SEED
 

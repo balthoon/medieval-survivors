@@ -10,11 +10,12 @@ signal slam_struck(at: Vector2, radius: float, damage: float)
 ## Seconds a hit flash lasts.
 const FLASH_DURATION := 0.08
 
-## Colour the body flashes on a normal hit.
-const HIT_FLASH := Color(1.0, 1.0, 1.0)
+## Colour the body flashes on a normal hit. Mirrors the texture the art cache
+## bakes for that flash, so the fallback and the baked body read alike.
+const HIT_FLASH := ArtCache.HIT_FLASH
 
 ## Colour the body flashes on a critical hit.
-const CRIT_FLASH := Color(0.95, 0.78, 0.25)
+const CRIT_FLASH := ArtCache.CRIT_FLASH
 
 ## Distance an enemy is pushed away from the attacker on each hit.
 const KNOCKBACK_DISTANCE := 28.0
@@ -22,7 +23,30 @@ const KNOCKBACK_DISTANCE := 28.0
 ## Alpha of the white wash drawn over the body for the length of a hit flash.
 ## High enough to read at 0.08 s, low enough that the creature's silhouette
 ## survives the flash instead of becoming a blob.
-const FLASH_ALPHA := 0.62
+const FLASH_ALPHA := ArtCache.FLASH_ALPHA
+
+## Sideways sway rate of a walking enemy, in cycles per second.
+const WADDLE_HZ := 7.0
+
+## Peak sideways sway of a walking enemy, in pixels.
+const WADDLE_SWAY := 1.5
+
+## Vertical bob rate of a walking enemy, in cycles per second. Deliberately a
+## little off [constant WADDLE_HZ], so the two motions never lock into one
+## diagonal-looking wobble.
+const WADDLE_BOB_HZ := 8.0
+
+## Peak vertical bob of a walking enemy, in pixels. Negative y is up.
+const WADDLE_BOB := 1.5
+
+## Fraction of the waddle still played while the enemy winds up a slam. The
+## telegraph must read as a rooted commitment, not a casual stroll.
+const TELEGRAPH_MOTION_SCALE := 0.3
+
+## Multipliers that turn a spawn position into a stable per-enemy waddle phase,
+## so a pack never animates in lockstep. Incommensurate on purpose.
+const PHASE_X := 0.05
+const PHASE_Y := 0.07
 
 ## Colour of the ground-slam telegraph. Danger red, translucent: it must be
 ## unmistakable over green grass without hiding the enemies behind it.
@@ -38,6 +62,32 @@ const TELEGRAPH_MIN_SCALE := 0.15
 ## Alpha of the telegraph at the start and at the moment of impact.
 const TELEGRAPH_MIN_ALPHA := 0.22
 const TELEGRAPH_MAX_ALPHA := 0.55
+
+## The drawn body, moved by the waddle. It is a child so the enemy's own
+## position stays gameplay truth, and so a living enemy repaints only when its
+## flash state changes: the body is drawn once at spawn, then translated per
+## frame by this node's transform. A baked texture makes that one drawing one
+## draw call; see [ArtCache] for why the vector art costs the frame budget.
+class Body extends Node2D:
+	## Art key copied from the enemy data.
+	var art: String = ""
+	## Body radius copied from the enemy data.
+	var radius: float = 13.0
+	## Archetype tint copied from the enemy data.
+	var tint: Color = Color.WHITE
+	## Hit-flash wash, transparent when the body is not flashing. Only read by
+	## the vector fallback; a baked texture carries the wash in the pixels.
+	var flash: Color = Color(0.0, 0.0, 0.0, 0.0)
+	## Which baked flash variant is showing.
+	var flash_kind: int = ArtCache.FLASH_NONE
+
+	func _draw() -> void:
+		var texture := ArtCache.texture(art, radius, tint, flash_kind)
+		if texture != null:
+			draw_texture(texture, -Vector2(texture.get_size()) * 0.5)
+			return
+		ActorArt.draw_creature(self, art, radius, tint, flash)
+
 
 ## Tuning data this enemy was built from.
 var data: EnemyData = null
@@ -57,6 +107,15 @@ var slam_radius: float = 0.0
 ## Seconds until this enemy may deal contact damage again.
 var contact_cooldown: float = 0.0
 
+## Seconds since this enemy spawned, used only by the waddle.
+var _anim_time: float = 0.0
+## The child that paints the creature and carries the waddle offset.
+var _body: Body = null
+## Stable phase offset of the waddle, in radians. Derived once from the spawn
+## position by [method _ensure_anim_phase].
+var _anim_phase: float = 0.0
+## True once [member _anim_phase] has been derived.
+var _anim_phase_ready: bool = false
 ## Seconds left in the current hit flash. The body is drawn in [method _draw],
 ## so a flash is a redraw rather than a material or a colour swap.
 var _flash_time: float = 0.0
@@ -88,6 +147,14 @@ static func create(
 	enemy.slam_damage = enemy_data.slam_damage * damage_scale
 	enemy.slam_radius = enemy_data.slam_radius
 
+	# The body is painted once, by its own child, and then only translated.
+	var body := Body.new()
+	body.art = enemy_data.art
+	body.radius = enemy.radius
+	body.tint = enemy_data.color
+	enemy.add_child(body)
+	enemy._body = body
+
 	# The disc is a child painted behind the parent's own drawing, so it stays
 	# under the creature. Painted in front, it would bury the boss it warns about.
 	if enemy_data.slam_damage > 0.0 and enemy_data.slam_radius > 0.0:
@@ -103,16 +170,15 @@ static func create(
 	return enemy
 
 
-## Draws the creature. Enemies never animate, so this runs once at creation and
-## again only around a hit flash — a field of sixty enemies costs sixty draws
-## total, not sixty per frame.
-func _draw() -> void:
-	if data == null:
+## Derives the waddle phase from the spawn position on the first visual step,
+## then keeps it for the enemy's whole life: using the live position instead
+## would make the phase drift with the body and cancel the motion. No RNG is
+## involved, so a seeded run animates identically every time.
+func _ensure_anim_phase() -> void:
+	if _anim_phase_ready:
 		return
-	var flash := Color(0.0, 0.0, 0.0, 0.0)
-	if _flash_time > 0.0:
-		flash = Color(_flash_color.r, _flash_color.g, _flash_color.b, FLASH_ALPHA)
-	ActorArt.draw_creature(self, data.art, radius, data.color, flash)
+	_anim_phase = fposmod(position.x * PHASE_X + position.y * PHASE_Y, TAU)
+	_anim_phase_ready = true
 
 
 ## Builds a circle polygon of the given radius, used by the slam telegraph.
@@ -188,6 +254,19 @@ func windup_progress() -> float:
 	return clampf(1.0 - _windup_left / _windup_total, 0.0, 1.0)
 
 
+## Delays the attack currently being prepared by [param seconds]. Only a
+## non-elite enemy that is actually winding up can be interrupted: the hammer's
+## stagger is a window on a commitment, not a permanent lock (GDD edge case
+## E14). Returns true when the preparation was delayed.
+func interrupt_windup(seconds: float) -> bool:
+	if seconds <= 0.0 or not is_telegraphing():
+		return false
+	if data != null and data.is_elite:
+		return false
+	_windup_left += seconds
+	return true
+
+
 ## Begins a windup and shows the disc at its smallest.
 func _start_windup() -> void:
 	_windup_total = maxf(data.slam_telegraph, 0.05)
@@ -224,15 +303,40 @@ func take_damage(amount: float, is_crit: bool = false) -> bool:
 	hp = maxf(hp - amount, 0.0)
 	_flash_time = FLASH_DURATION
 	_flash_color = CRIT_FLASH if is_crit else HIT_FLASH
-	queue_redraw()
+	if _body != null:
+		_body.flash = Color(_flash_color.r, _flash_color.g, _flash_color.b, FLASH_ALPHA)
+		_body.flash_kind = ArtCache.FLASH_CRIT if is_crit else ArtCache.FLASH_HIT
+		_body.queue_redraw()
 	return hp <= 0.0
 
 
-## Advances the hit flash and repaints once it is over. Called every frame by the
-## enemy manager.
+## Advances the waddle, moves the painted body with it and runs down the hit
+## flash. The body node is translated, never repainted: only the flash's start
+## and end change the drawing, so a field full of enemies costs one transform
+## per enemy instead of one full storybook redraw.
 func step_visual(delta: float) -> void:
+	_ensure_anim_phase()
+	_anim_time += delta
+	if _body != null:
+		var motion := 1.0
+		if is_telegraphing():
+			motion = TELEGRAPH_MOTION_SCALE
+		var sway := sin(_anim_time * TAU * WADDLE_HZ + _anim_phase) * WADDLE_SWAY * motion
+		var bob := -absf(
+			sin(_anim_time * TAU * WADDLE_BOB_HZ + _anim_phase)
+		) * WADDLE_BOB * motion
+		_body.position = Vector2(sway, bob)
 	if _flash_time <= 0.0:
 		return
 	_flash_time = maxf(_flash_time - delta, 0.0)
-	if _flash_time <= 0.0:
-		queue_redraw()
+	if _flash_time <= 0.0 and _body != null:
+		_body.flash = Color(0.0, 0.0, 0.0, 0.0)
+		_body.flash_kind = ArtCache.FLASH_NONE
+		_body.queue_redraw()
+
+
+## Repaints the body once. Called after [ArtCache] finishes baking this
+## archetype, so a body that drew the vector fallback switches to its texture.
+func refresh_body() -> void:
+	if _body != null:
+		_body.queue_redraw()

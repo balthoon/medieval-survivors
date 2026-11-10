@@ -1,4 +1,4 @@
-[gd_resource type="Resource" load_steps=33 format=3]
+[gd_resource type="Resource" load_steps=39 format=3]
 
 [ext_resource type="Script" path="res://src/data/catalogue.gd" id="1_script"]
 [ext_resource type="Script" path="res://src/data/enemy_data.gd" id="2_enemy_type"]
@@ -32,13 +32,20 @@
 [ext_resource type="Resource" path="res://data/upgrades/precision.tres" id="30_precision"]
 [ext_resource type="Resource" path="res://data/waves/base_wave.tres" id="31_base_wave"]
 [ext_resource type="Resource" path="res://data/classes/chevalier.tres" id="32_chevalier"]
+[ext_resource type="Resource" path="res://data/weapons/faux.tres" id="33_faux"]
+[ext_resource type="Resource" path="res://data/weapons/arbalete.tres" id="34_arbalete"]
+[ext_resource type="Resource" path="res://data/weapons/baton.tres" id="35_baton"]
+[ext_resource type="Resource" path="res://data/weapons/orbe.tres" id="36_orbe"]
+[ext_resource type="Resource" path="res://data/weapons/encensoir.tres" id="37_encensoir"]
+[ext_resource type="Resource" path="res://data/weapons/lame_vampire.tres" id="38_lame_vampire"]
 
 [resource]
 script = ExtResource("1_script")
 enemies = Array[ExtResource("2_enemy_type")]([ExtResource("6_squelette"), ExtResource("7_loup_maudit"), ExtResource("8_orc")])
-weapons = Array[ExtResource("3_weapon_type")]([ExtResource("10_epee_longue"), ExtResource("11_dague"), ExtResource("12_marteau"), ExtResource("13_arc_court")])
+weapons = Array[ExtResource("3_weapon_type")]([ExtResource("10_epee_longue"), ExtResource("11_dague"), ExtResource("12_marteau"), ExtResource("13_arc_court"), ExtResource("33_faux"), ExtResource("34_arbalete"), ExtResource("35_baton"), ExtResource("36_orbe"), ExtResource("37_encensoir"), ExtResource("38_lame_vampire")])
 equipment = Array[ExtResource("4_equipment_type")]([ExtResource("14_casque_fer"), ExtResource("15_casque_ancien"), ExtResource("16_plastron_cuir"), ExtResource("17_plastron_mailles"), ExtResource("18_bottes_cuir"), ExtResource("19_bottes_rapides"), ExtResource("20_gants_fer"), ExtResource("21_gants_precis"), ExtResource("22_anneau_argent"), ExtResource("23_anneau_rubis"), ExtResource("24_amulette_lune"), ExtResource("25_amulette_sang")])
 upgrades = Array[ExtResource("5_upgrade_type")]([ExtResource("26_degats"), ExtResource("27_cadence"), ExtResource("28_vitalite"), ExtResource("29_vitesse"), ExtResource("30_precision")])
+fallback_upgrade = ExtResource("28_vitalite")
 boss = ExtResource("9_seigneur")
 wave = ExtResource("31_base_wave")
 starting_class = ExtResource("32_chevalier")

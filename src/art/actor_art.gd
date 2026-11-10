@@ -32,6 +32,10 @@ const CLOAK := Color(0.290, 0.212, 0.153)
 ## Threat accent: the boss's eyes, never a costume colour.
 const DANGER := Color(0.75, 0.20, 0.14)
 
+## Routes drawing to the shipped storybook renderer. STYLE_CURRENT remains as an
+## escape hatch for comparison captures.
+const VisualPilot := preload("res://src/art/visual_pilot.gd")
+
 
 # --- the knight ---------------------------------------------------------
 
@@ -40,6 +44,9 @@ const DANGER := Color(0.75, 0.20, 0.14)
 ## [param bob] is the breathing offset, already in pixels.
 ## Weapons are not drawn here: [WeaponView] owns them and rotates them itself.
 static func draw_knight(item: CanvasItem, view: String, radius: float, bob: float) -> void:
+	if VisualPilot.is_active():
+		VisualPilot.draw_knight(item, view, radius, bob)
+		return
 	var s := radius
 	InkStyle.shadow(item, Vector2(0.0, s * 0.98), s * 1.02)
 
@@ -182,6 +189,9 @@ static func _knight_profile(item: CanvasItem, s: float, bob: float, dir: float) 
 static func draw_creature(
 	item: CanvasItem, art: String, radius: float, tint: Color, flash: Color
 ) -> void:
+	if VisualPilot.is_active():
+		VisualPilot.draw_creature(item, art, radius, tint, flash)
+		return
 	var r := radius
 	match art:
 		ART_ORC:

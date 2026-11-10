@@ -7,6 +7,10 @@
 class_name Stats
 extends RefCounted
 
+## Highest crit chance a hit can reach, whatever the weapon's base chance and
+## the player's bonus add up to.
+const CRIT_CAP := 0.75
+
 ## Base hit points.
 var max_hp: float = 100.0
 ## Movement speed in pixels per second.
@@ -53,7 +57,7 @@ func apply_upgrade(upgrade: UpgradeData) -> void:
 		"move_speed":
 			move_speed_mult += upgrade.amount
 		"crit_chance":
-			crit_chance_bonus = clampf(crit_chance_bonus + upgrade.amount, 0.0, 0.75)
+			crit_chance_bonus = clampf(crit_chance_bonus + upgrade.amount, 0.0, CRIT_CAP)
 		"range":
 			range_mult += upgrade.amount
 
@@ -74,7 +78,7 @@ func apply_equipment(item: EquipmentData) -> void:
 		"move_speed":
 			move_speed_mult += item.amount
 		"crit_chance":
-			crit_chance_bonus = clampf(crit_chance_bonus + item.amount, 0.0, 0.75)
+			crit_chance_bonus = clampf(crit_chance_bonus + item.amount, 0.0, CRIT_CAP)
 		"range":
 			range_mult += item.amount
 
@@ -100,11 +104,34 @@ func weapon_range(weapon: WeaponData) -> float:
 	return weapon.range_px * range_mult
 
 
-## Effective crit chance of one weapon, clamped so it never exceeds 0.75.
+## Effective crit chance of one weapon, clamped so it never exceeds
+## [constant CRIT_CAP].
 func weapon_crit_chance(weapon: WeaponData) -> float:
 	if weapon == null:
 		return 0.0
-	return clampf(weapon.crit_chance + crit_chance_bonus, 0.0, 0.75)
+	return clampf(weapon.crit_chance + crit_chance_bonus, 0.0, CRIT_CAP)
+
+
+## True when [param stat] has reached a hard ceiling and another point would
+## change nothing. Only crit chance has one today; every other stat is uncapped.
+## Crit is capped on the bonus itself; a weapon's own base crit can reach the cap
+## earlier, which [method crit_is_capped_for] checks per carried weapon.
+func is_capped(stat: String) -> bool:
+	if stat == "crit_chance":
+		return crit_chance_bonus >= CRIT_CAP
+	return false
+
+
+## True when every carried weapon already crits at [constant CRIT_CAP], so a
+## further crit bonus would change nothing. An empty loadout counts as capped:
+## no weapon can benefit. Null entries are skipped.
+func crit_is_capped_for(weapons: Array[WeaponData]) -> bool:
+	for weapon in weapons:
+		if weapon == null:
+			continue
+		if weapon_crit_chance(weapon) < CRIT_CAP - 0.0001:
+			return false
+	return true
 
 
 ## Movement speed after every speed multiplier, in pixels per second.

@@ -28,6 +28,13 @@ var direction: Vector2 = Vector2.RIGHT
 ## Distance travelled so far, in pixels.
 var travelled: float = 0.0
 
+## Enemies this bolt has already hit. Only a piercing bolt can meet the same
+## body twice, and it must not repeat the hit.
+var _hit_enemies: Array[Enemy] = []
+## Living enemies already pierced by this bolt: the rank of the next hit. Dead
+## enemies never reach this counter (GDD edge case E4).
+var _pierce_rank: int = 0
+
 
 ## Builds a bolt travelling from [param from] along [param dir]. Returns it
 ## unattached.
@@ -47,8 +54,9 @@ static func create(
 	return bolt
 
 
-## Moves the bolt, resolves the first enemy it reaches, and returns true when
-## the bolt is spent (hit something, or flew its full range).
+## Moves the bolt, resolves the enemies it reaches, and returns true when the
+## bolt is spent. A plain bolt is spent on its first victim; a piercing one
+## keeps flying until its range runs out.
 ##
 ## The move is split into sub-steps no longer than RADIUS. A bolt covers 10 px
 ## at 60 fps but far more on a slow frame, and a single jump can land past an
@@ -70,9 +78,13 @@ func step(delta: float, enemy_manager: EnemyManager) -> bool:
 
 		if enemy_manager != null:
 			var hits := enemy_manager.query_circle(position, RADIUS)
-			if not hits.is_empty():
-				_resolve_hit(hits[0])
-				return true
+			for enemy in hits:
+				if enemy == null or _hit_enemies.has(enemy):
+					continue
+				_resolve_hit(enemy)
+				_hit_enemies.append(enemy)
+				if weapon.mechanic != &"pierce":
+					return true
 
 		if travelled >= max_range:
 			return true
@@ -86,11 +98,39 @@ func _resolve_hit(enemy: Enemy) -> void:
 	if enemy == null:
 		return
 	var hit := DamageCalc.roll(stats, weapon, rng)
-	var amount := float(hit["amount"])
+	var amount := mechanic_damage(
+		weapon, float(hit["amount"]), travelled, stats.weapon_range(weapon), _pierce_rank
+	)
 	var is_crit := bool(hit["is_crit"])
+	if weapon.mechanic == &"pierce":
+		_pierce_rank += 1
 	enemy.take_damage(amount, is_crit)
 	enemy.apply_knockback(position - direction * LENGTH, weapon.knockback)
 	hit_resolved.emit(amount, is_crit, enemy.position)
+
+
+## Applies the mechanic's damage rule to one rolled hit. Pure math on purpose:
+## the bow's range bonus (GDD F6) and the crossbow's falloff (GDD F8) are
+## unit-tested without a scene.
+##
+## [param pierce_rank] is the number of living enemies already pierced by this
+## bolt, so the first victim is rank 0 and keeps the full damage.
+static func mechanic_damage(
+	from_weapon: WeaponData,
+	amount: float,
+	travelled: float,
+	max_range: float,
+	pierce_rank: int
+) -> float:
+	if from_weapon == null:
+		return amount
+	match from_weapon.mechanic:
+		&"distance":
+			var ratio := clampf(travelled / maxf(max_range, 1.0), 0.0, 1.0)
+			return amount * (1.0 + from_weapon.distance_damage_bonus * ratio)
+		&"pierce":
+			return amount * pow(from_weapon.pierce_falloff, pierce_rank)
+	return amount
 
 
 ## Draws the bolt pointing along its direction of travel. In local space +x is

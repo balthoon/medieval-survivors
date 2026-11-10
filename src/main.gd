@@ -10,6 +10,10 @@ extends Node2D
 ## and boss scaling.
 const RUN_CONFIG_PATH := "res://data/run_config.tres"
 
+## Visual-direction hooks. The arena reports its static props through
+## obstacle_field(); the atmosphere overlay below is the same pilot harness.
+const VisualPilot := preload("res://src/art/visual_pilot.gd")
+
 ## Content resources this run draws from: enemies, weapons, equipment, upgrades,
 ## the boss, the wave tuning and the starting class. Assigned in the scene, so
 ## this script names no content path. A missing assignment is reported once and
@@ -34,6 +38,11 @@ var _projectiles: Node2D = null
 var _fx: Fx = null
 var _sfx: Sfx = null
 var _camera: Camera2D = null
+## Static props of the arena, shared with [member EnemyManager.obstacles].
+var _obstacles: ObstacleField = null
+## Foreground vignette and pollen. Draws nothing while the pilot style is
+## inactive, so it costs one idle node per run.
+var _atmosphere: PilotOverlay = null
 var _wave_director := WaveDirector.new()
 var _rng := RandomNumberGenerator.new()
 ## Separate roll source for cosmetic effects (camera shake), so consuming a
@@ -44,9 +53,15 @@ var _inventory := Inventory.new()
 var _enemy_pool: Array[EnemyData] = []
 var _boss_data: EnemyData = null
 var _upgrades: Array[UpgradeData] = []
+## Last-resort offer declared by the catalogue. Copied out of the resource with
+## the pools, so trimming this run's content never mutates the shared catalogue.
+var _fallback_upgrade: UpgradeData = null
 var _weapon_pool: Array[WeaponData] = []
 var _equipment_pool: Array[EquipmentData] = []
 var _pending_choices: Array[Offer] = []
+## Set after a level-up found nothing to offer, so the warning is logged once
+## instead of every frame while the XP stays above the threshold.
+var _empty_offer_warned := false
 ## True while the open panel is the boss loot panel, so a reroll rebuilds loot
 ## and not level-up choices.
 var _boss_loot_open := false
@@ -89,6 +104,13 @@ func _ready() -> void:
 	set_process_unhandled_key_input(true)
 	_player = $Player as Player
 	_enemy_manager = $EnemyManager as EnemyManager
+	# The scene's static props become real collision for this run, and the pilot
+	# atmosphere joins the live scene. Both hooks are inert in the shipped style.
+	_obstacles = VisualPilot.obstacle_field()
+	_enemy_manager.obstacles = _obstacles
+	_atmosphere = PilotOverlay.new()
+	_atmosphere.player = _player
+	add_child(_atmosphere)
 	_spawner = $Spawner as Spawner
 	_hud = $HUD as HUD
 	_weapon_system = $WeaponSystem as WeaponSystem
@@ -116,6 +138,9 @@ func _ready() -> void:
 	_weapon_system.fx = _fx
 	_weapon_system.sfx = _sfx
 	_weapon_system.hit_landed.connect(_on_hit_landed)
+	# Every shot leans the body toward it; the lunge is draw-only, so movement,
+	# collisions and the weapons' attach point are untouched.
+	_weapon_system.attack_started.connect(_player.play_attack_lunge)
 
 	var wave_data := catalogue.wave
 	_wave_director.setup(wave_data)
@@ -132,6 +157,27 @@ func _ready() -> void:
 	_hud.hide_dead()
 	_refresh_hud()
 
+	_prebake_art()
+
+
+## Bakes every enemy archetype of the catalogue into [ArtCache] textures, then
+## repaints the bodies that drew the vector fallback before the bake landed.
+## Runs in the background: the first wave spawns a second and a half later, so
+## the bake is done long before the field fills. See [ArtCache] for the cost it
+## removes.
+func _prebake_art() -> void:
+	if catalogue == null:
+		return
+	for data in catalogue.enemies:
+		if data != null:
+			ArtCache.request(self, data.art, data.radius, data.color)
+	if _boss_data != null:
+		ArtCache.request(self, _boss_data.art, _boss_data.radius, _boss_data.color)
+	await ArtCache.await_idle(self)
+	for enemy in _enemy_manager.enemies:
+		if enemy != null:
+			enemy.refresh_body()
+
 
 func _process(delta: float) -> void:
 	# Runs before the early returns so a shake always decays back to centre,
@@ -147,7 +193,19 @@ func _process(delta: float) -> void:
 		return
 
 	var move_dir := _read_move_dir()
+	var before := _player.position
 	_player.step_movement(move_dir, delta)
+	if _obstacles != null:
+		_player.position = _obstacles.slide(before, _player.position, Player.RADIUS)
+		_player.clamp_inside()
+		# A prop close to the arena border can push the resolved body outside the
+		# play rect, and the clamp then pushes it back into the prop. That wedge
+		# holds no legal position, so stay at the last free one instead of
+		# crossing through: the player walks around the prop, never through it.
+		if not _obstacles.resolve(_player.position, Player.RADIUS).is_equal_approx(
+			_player.position
+		):
+			_player.position = before
 	_player.step(delta)
 	_update_facing(move_dir)
 	_weapon_system.step(delta)
@@ -180,6 +238,7 @@ func _load_data() -> void:
 	if _boss_data == null:
 		push_warning("main: catalogue has no boss — boss waves will be empty")
 	_upgrades.assign(catalogue.upgrades)
+	_fallback_upgrade = catalogue.fallback_upgrade
 	_weapon_pool.assign(catalogue.weapons)
 	_equipment_pool.assign(catalogue.equipment)
 
@@ -296,18 +355,31 @@ func _check_level_up() -> void:
 	if _xp < _xp_needed:
 		return
 
+	# Build the choices before spending the level. If the catalogue can produce
+	# none — no upgrade and no fallback — the level is kept and the run keeps
+	# playing; a missing content resource must never eat a level-up in silence.
+	var choices := _build_offers(_config.upgrade_offer_count)
+	if choices.is_empty():
+		if not _empty_offer_warned:
+			push_warning(
+				"main: no level-up offer available — check Catalogue.fallback_upgrade and upgrades"
+			)
+			_empty_offer_warned = true
+		return
+	_empty_offer_warned = false
+
 	_xp -= _xp_needed
 	_level += 1
 	_xp_needed = xp_to_next(_level)
 	if _level in _config.reroll_levels:
 		_rerolls += 1
-	_offer_choices()
+	_offer_choices(choices)
 
 
-func _offer_choices() -> void:
-	var choices := _build_offers(_config.upgrade_offer_count)
-	if choices.is_empty():
-		return
+## Presents the level-up choices already built by [method _build_offers]. The
+## caller consumes the level only once choices exist, so this method never has
+## to reject an empty panel.
+func _offer_choices(choices: Array[Offer]) -> void:
 	_pending_choices = choices
 	_boss_loot_open = false
 	is_paused = true
@@ -345,6 +417,10 @@ func _offer_boss_loot() -> void:
 ## weighted by rarity, and a piece that would replace the equipped one with the
 ## same stat for less is never offered — the panel must not hide a downgrade.
 ##
+## A stat at its ceiling is never offered either, and a fully filtered pool
+## falls back to [member Catalogue.fallback_upgrade], so a level-up always has
+## at least one applicable choice.
+##
 ## [param weapon_weight] and [param equipment_weight] override the normal kind
 ## weights, which is how the boss loot panel leans its offers toward gear. A
 ## negative value means "use the run tuning": GDScript default arguments must be
@@ -361,7 +437,7 @@ func _build_offers(
 	var candidates: Array[Offer] = []
 
 	for upgrade in _upgrades:
-		if upgrade == null:
+		if upgrade == null or _stat_offer_is_dead(upgrade.stat):
 			continue
 		var stat_offer := Offer.for_stat(upgrade)
 		stat_offer.weight = maxf(upgrade.weight, 0.0)
@@ -385,7 +461,7 @@ func _build_offers(
 		candidates.append_array(weapon_offers)
 
 	for item in _equipment_pool:
-		if item == null:
+		if item == null or _stat_offer_is_dead(item.stat):
 			continue
 		var equipped := _inventory.item_in_slot(item.slot)
 		if equipped == item:
@@ -399,7 +475,43 @@ func _build_offers(
 		_decorate_offer(item_offer)
 		candidates.append(item_offer)
 
+	if candidates.is_empty():
+		var fallback := _fallback_offer()
+		if fallback != null:
+			candidates.append(fallback)
+
 	return _pick_weighted(candidates, count)
+
+
+## True when an offer touching [param stat] would change nothing. Crit chance is
+## the only capped stat today, and its cap is per carried weapon: each weapon
+## adds its own base crit, so a bonus that is dead for one weapon can still
+## raise another. Every other stat is uncapped.
+func _stat_offer_is_dead(stat: String) -> bool:
+	if _player == null or _player.stats == null:
+		return false
+	if stat != "crit_chance":
+		return _player.stats.is_capped(stat)
+	return (
+		_player.stats.is_capped(stat)
+		or _player.stats.crit_is_capped_for(_inventory.weapons)
+	)
+
+
+## Last-resort offer when every normal candidate was filtered out. Prefers the
+## catalogue's declared fallback, then the first still-applicable upgrade, so the
+## guarantee stays data-driven and never hands back a dead crit choice.
+func _fallback_offer() -> Offer:
+	var upgrade := _fallback_upgrade
+	if upgrade == null or _stat_offer_is_dead(upgrade.stat):
+		upgrade = null
+		for candidate in _upgrades:
+			if candidate != null and not _stat_offer_is_dead(candidate.stat):
+				upgrade = candidate
+				break
+	if upgrade == null:
+		return null
+	return Offer.for_stat(upgrade)
 
 
 ## Rewrites an offer's description with the numbers that actually apply to this
@@ -419,9 +531,22 @@ func _decorate_offer(offer: Offer) -> void:
 			var cadence := stats.weapon_attacks_per_second(weapon)
 			var crit := stats.weapon_crit_chance(weapon)
 			var dps := damage * cadence * (1.0 + crit * (weapon.crit_multiplier - 1.0))
-			offer.description = "%d dégâts · %.1f att/s · %.0f DPS · portée %.0f px" % [
+			var numbers := "%d dégâts · %.1f att/s · %.0f DPS · portée %.0f px" % [
 				int(round(damage)), cadence, dps, stats.weapon_range(weapon)
 			]
+			# The orbit has no cadence of its own: its rate is one contact per
+			# enemy per revolution, capped by the per-enemy cooldown (GDD §3.4).
+			if weapon.mechanic == &"orbit":
+				var turn := TAU / maxf(weapon.orbit_speed, 0.001)
+				cadence = minf(1.0 / turn, 1.0 / maxf(weapon.orbit_hit_cooldown, 0.001))
+				dps = damage * cadence
+				numbers = "%d dégâts · %.1f contact/s par ennemi · %.1f DPS/ennemi · rayon %.0f px" % [
+					int(round(damage)), cadence, dps, weapon.orbit_radius * stats.range_mult
+				]
+			offer.description = (
+				numbers if weapon.description.is_empty()
+				else "%s — %s" % [weapon.description, numbers]
+			)
 		"equipment":
 			var item := offer.equipment
 			if item == null:

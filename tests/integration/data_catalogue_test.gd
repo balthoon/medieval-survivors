@@ -9,7 +9,7 @@ const CATALOGUE_PATH := "res://data/catalogue.tres"
 
 const EXPECTED_ENEMIES := 3
 const EXPECTED_BOSS := 1
-const EXPECTED_WEAPONS := 4
+const EXPECTED_WEAPONS := 10
 const EXPECTED_EQUIPMENT := 12
 const EXPECTED_UPGRADES := 5
 const EXPECTED_WAVE := 1
@@ -61,7 +61,7 @@ func test_catalogue_lists_have_expected_counts() -> void:
 		"3 enemy archetypes"
 	).is_equal(EXPECTED_ENEMIES)
 	assert_int(catalogue.weapons.size()).override_failure_message(
-		"4 weapons"
+		"10 weapons"
 	).is_equal(EXPECTED_WEAPONS)
 	assert_int(catalogue.equipment.size()).override_failure_message(
 		"12 pieces of equipment"
@@ -139,6 +139,63 @@ func test_no_list_repeats_a_resource_instance() -> void:
 	_assert_no_shared_instances(catalogue.weapons, "weapons")
 	_assert_no_shared_instances(catalogue.equipment, "equipment")
 	_assert_no_shared_instances(catalogue.upgrades, "upgrades")
+
+
+func test_every_weapon_has_a_unique_id_and_a_known_mechanic() -> void:
+	# Arrange
+	var catalogue := _load_catalogue()
+	assert_object(catalogue).is_not_null()
+	if catalogue == null:
+		return
+	var seen := {}
+
+	# Act / Assert — W2-E2 adds the six new weapons; a duplicate id would make
+	# Inventory.has_weapon() lie, and an unknown token would fall back to cleave.
+	for index in catalogue.weapons.size():
+		var weapon := catalogue.weapons[index]
+		assert_object(weapon).override_failure_message(
+			"weapons[%d] is assigned" % index
+		).is_not_null()
+		if weapon == null:
+			continue
+		assert_bool(weapon.id.is_empty()).override_failure_message(
+			"weapons[%d] has a non-empty id" % index
+		).is_false()
+		assert_bool(seen.has(weapon.id)).override_failure_message(
+			"weapon id '%s' is unique" % weapon.id
+		).is_false()
+		seen[weapon.id] = true
+		assert_bool(weapon.has_known_mechanic()).override_failure_message(
+			"weapon '%s' carries a known mechanic, got '%s'" % [weapon.id, weapon.mechanic]
+		).is_true()
+
+
+func test_fallback_upgrade_is_configured_and_never_dead() -> void:
+	# Arrange
+	var catalogue := _load_catalogue()
+	assert_object(catalogue).is_not_null()
+	if catalogue == null:
+		return
+
+	# Act
+	var fallback := catalogue.fallback_upgrade
+
+	# Assert — the fallback is what keeps a level-up from ever showing an empty
+	# panel, so it must exist, stay part of the normal upgrade list, and carry a
+	# stat that a ceiling can never make dead. Crit is checked at its own cap.
+	assert_object(fallback).override_failure_message(
+		"fallback_upgrade is assigned"
+	).is_not_null()
+	if fallback == null:
+		return
+	assert_bool(catalogue.upgrades.has(fallback)).override_failure_message(
+		"the fallback is also a normal upgrade, not a hidden special case"
+	).is_true()
+	var capped_stats := Stats.new()
+	capped_stats.crit_chance_bonus = Stats.CRIT_CAP
+	assert_bool(capped_stats.is_capped(fallback.stat)).override_failure_message(
+		"fallback_upgrade '%s' carries an uncapped stat" % fallback.stat
+	).is_false()
 
 
 func test_weapon_lookup_finds_the_stable_id() -> void:

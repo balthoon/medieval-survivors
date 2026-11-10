@@ -17,6 +17,9 @@ extends Resource
 @export var equipment: Array[EquipmentData] = []
 ## Stat upgrades offered on level up.
 @export var upgrades: Array[UpgradeData] = []
+## Last-resort level-up offer, used when every normal candidate is filtered out.
+## It must carry an uncapped stat, so it can never become a dead choice itself.
+@export var fallback_upgrade: UpgradeData = null
 ## Elite spawned on every boss wave. Never added to [member enemies].
 @export var boss: EnemyData = null
 ## Wave pacing: duration, spawn cadence and the run's finish line.

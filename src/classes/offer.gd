@@ -33,16 +33,15 @@ static func for_stat(upgrade: UpgradeData) -> Offer:
 	return offer
 
 
-## Builds a new-weapon choice.
+## Builds a new-weapon choice. The description starts with the weapon's own
+## pitch — the sentence that names its mechanic — before any number (AC8).
 static func for_weapon(new_weapon: WeaponData) -> Offer:
 	var offer := Offer.new()
 	offer.kind = "weapon"
 	offer.weapon = new_weapon
 	if new_weapon != null:
 		offer.title = "Arme : %s" % new_weapon.display_name
-		offer.description = "%.0f degats, %.1f attaque/s, portee %.0f" % [
-			new_weapon.damage, new_weapon.attacks_per_second, new_weapon.range_px
-		]
+		offer.description = new_weapon.description
 	return offer
 
 
