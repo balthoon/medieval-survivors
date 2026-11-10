@@ -11,3 +11,5 @@ rarity = "legendaire"
 stat = "damage"
 amount = 0.22
 description = "+22 % de dégâts"
+passive_id = &"rage"
+passive_value = 0.15

@@ -11,3 +11,4 @@ rarity = "peu_commun"
 stat = "attack_speed"
 amount = 0.08
 description = "+8 % de vitesse d'attaque"
+set_id = "coureur_des_bois"

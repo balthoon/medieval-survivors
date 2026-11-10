@@ -26,6 +26,19 @@ var attack_speed_mult: float = 1.0
 var range_mult: float = 1.0
 ## Added to every weapon's crit chance, clamped to 0.75 when read.
 var crit_chance_bonus: float = 0.0
+## Bonus damage fraction granted by the rage passive while the player is below
+## [member rage_hp_threshold]. Zero when no worn piece carries the passive.
+var rage_bonus: float = 0.0
+## Health fraction below which [member rage_bonus] applies. Comes from the run
+## config, never from the piece, so every piece that grants rage shares it.
+var rage_hp_threshold: float = 0.5
+## Current health fraction, refreshed by the run each frame. The rage
+## multiplier is read when a hit resolves, so it never lags a threshold crossing
+## by more than one frame (GDD E19's snapshot rule applies to the level, not to
+## this).
+var hp_ratio: float = 1.0
+## Hit points restored on every level gained, summed from worn passives.
+var level_up_heal: float = 0.0
 
 
 ## Builds the run's base Stats from a class. Weapons are not read here: the
@@ -68,19 +81,44 @@ func apply_equipment(item: EquipmentData) -> void:
 	if item == null:
 		return
 
-	match item.stat:
+	_add_stat(item.stat, item.amount)
+
+
+## Applies a completed set's bonus once. The caller rebuilds the derived stats
+## from the base every time equipment changes, so a set that stays complete is
+## never counted twice (GDD equipment AC5).
+func apply_set_bonus(set_data: EquipmentSetData) -> void:
+	if set_data == null:
+		return
+
+	_add_stat(set_data.stat, set_data.amount)
+
+
+## Adds [param amount] to the multiplier of [param stat_key]. Unknown keys are
+## ignored, as before.
+func _add_stat(stat_key: String, amount: float) -> void:
+	match stat_key:
 		"damage":
-			damage_mult += item.amount
+			damage_mult += amount
 		"attack_speed":
-			attack_speed_mult += item.amount
+			attack_speed_mult += amount
 		"max_hp":
-			max_hp += item.amount
+			max_hp += amount
 		"move_speed":
-			move_speed_mult += item.amount
+			move_speed_mult += amount
 		"crit_chance":
-			crit_chance_bonus = clampf(crit_chance_bonus + item.amount, 0.0, CRIT_CAP)
+			crit_chance_bonus = clampf(crit_chance_bonus + amount, 0.0, CRIT_CAP)
 		"range":
-			range_mult += item.amount
+			range_mult += amount
+
+
+## Damage multiplier granted by the rage passive: active only while the player
+## is strictly below [member rage_hp_threshold]. One frame of lag at most, since
+## the run refreshes [member hp_ratio] every frame.
+func rage_multiplier() -> float:
+	if rage_bonus <= 0.0 or hp_ratio >= rage_hp_threshold:
+		return 1.0
+	return 1.0 + rage_bonus
 
 
 ## Damage multiplier granted by one weapon level alone. The step is additive on
@@ -120,11 +158,18 @@ func weapon_range_multiplier(weapon: WeaponData, level: int = 1) -> float:
 
 
 ## Effective damage of one weapon at [param level], before the crit roll.
-## Order: base damage, then the level step, then [member damage_mult].
+## Order: base damage, then the level step, then [member damage_mult], then the
+## rage passive. Offer numbers therefore show the damage the player would deal
+## right now, low health included (GDD equipment F3).
 func weapon_damage(weapon: WeaponData, level: int = 1) -> float:
 	if weapon == null:
 		return 0.0
-	return weapon.damage * level_damage_multiplier(weapon, level) * damage_mult
+	return (
+		weapon.damage
+		* level_damage_multiplier(weapon, level)
+		* damage_mult
+		* rage_multiplier()
+	)
 
 
 ## Effective attacks per second of one weapon at [param level]. Order: base

@@ -75,6 +75,7 @@ var _elapsed := 0.0
 @onready var _wave_fill: ColorRect = $WaveBarFill
 @onready var _death_label: Label = $DeathLabel
 @onready var _wave_banner: Label = $WaveBanner
+@onready var _set_summary: Label = $SetSummary
 @onready var _damage_flash: ColorRect = $DamageFlash
 @onready var _upgrade_panel: Control = $UpgradePanel
 @onready var _panel_title: Label = $UpgradePanel/Title
@@ -191,8 +192,24 @@ func update_weapons(
 		status.text = "PRÊTE" if remaining <= 0.001 else "%.1f s" % remaining
 
 
-## Refreshes the six equipment rows, one per body slot in Inventory.SLOTS order.
-func update_equipment(inventory: Inventory) -> void:
+## Refreshes the six equipment rows, one per body slot in Inventory.SLOTS order,
+## and the set summary line above them.
+##
+## [param completed_set_ids] prefixes a worn set piece with `◆`, like the
+## summary line does. [param set_summary] is the ready-made progress line
+## ("Colosse 2/2 · Coureur des bois 1/2") and is hidden when empty, so the
+## screen holds one set line instead of repeating it on every piece.
+## [param rage_active] appends a word to the piece carrying the rage passive
+## while it raises damage, so the state is never shown by colour alone.
+func update_equipment(
+	inventory: Inventory,
+	completed_set_ids: PackedStringArray = PackedStringArray(),
+	rage_hp_threshold: float = 0.5,
+	rage_active: bool = false,
+	set_summary: String = ""
+) -> void:
+	_set_summary.text = set_summary
+	_set_summary.visible = not set_summary.is_empty()
 	for index in _equipment_labels.size():
 		var slot := String(Inventory.SLOTS[index])
 		var title := String(_SLOT_TITLES.get(slot, slot))
@@ -203,9 +220,28 @@ func update_equipment(inventory: Inventory) -> void:
 		if item == null:
 			_equipment_labels[index].text = "%s : —" % title
 		else:
-			_equipment_labels[index].text = "%s : %s · %s" % [
+			var line := "%s : %s · %s" % [
 				title, item.display_name, item.effect_text()
 			]
+			var passive := item.passive_text(rage_hp_threshold)
+			if not passive.is_empty():
+				line += " · " + passive
+			if rage_active and item.passive_id == &"rage":
+				line += " · " + Loc.text("equipment.rage_active", "ACTIF")
+			# A diamond marks a piece whose set is complete, so the bonus is
+			# visible on the equipment row as well as on the summary line.
+			if not item.set_id.is_empty() and completed_set_ids.has(item.set_id):
+				line = "◆ " + line
+			_equipment_labels[index].text = line
+
+
+## Title of a level-up panel. With the amulet's passive, the title names the
+## health actually restored — 0 at full health — so the number on screen is
+## never the nominal value the piece advertises.
+func level_up_title(healed: int, shows_heal: bool) -> String:
+	if not shows_heal:
+		return LEVEL_UP_TITLE
+	return Loc.format("hud.level_up_heal_title", "Montée de niveau · Soin +%d PV", [healed])
 
 
 ## Shows the large wave banner and restarts its fade timer. [param suffix] is

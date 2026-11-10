@@ -29,6 +29,15 @@ const RARITY_WEIGHTS := {
 @export var stat: String = "damage"
 ## Amount applied to the stat; percentage stats use fractions (0.1 == +10%).
 @export var amount: float = 0.05
+## Rule the piece grants while worn; empty means no passive. Known ids:
+## "rage" (bonus damage below a health threshold) and "level_up_heal" (hit
+## points restored on every level gained).
+@export var passive_id: StringName = &""
+## Magnitude of [member passive_id]: a fraction for rage, hit points for the
+## heal. Ignored when [member passive_id] is empty.
+@export var passive_value: float = 0.0
+## Stable id of the set the piece belongs to; empty means no set.
+@export var set_id: String = ""
 ## Short effect text shown under the name.
 @export var description: String = ""
 
@@ -41,17 +50,47 @@ static func offer_weight_for_rarity(rarity: String) -> float:
 ## Effect of the piece formatted for the HUD, for example "+22 % dégâts".
 ## Unknown stat keys fall back to [member description].
 func effect_text() -> String:
-	match stat:
+	return stat_text(stat, amount, description)
+
+
+## Formats a stat modifier for display, shared with [EquipmentSetData] so a set
+## bonus reads exactly like the piece that grants it.
+## Unknown stat keys fall back to [param fallback].
+static func stat_text(stat_key: String, value: float, fallback: String = "") -> String:
+	match stat_key:
 		"max_hp":
-			return "+%d PV" % int(round(amount))
+			return "+%d PV" % int(round(value))
 		"damage":
-			return "+%d %% dégâts" % int(round(amount * 100.0))
+			return "+%d %% dégâts" % int(round(value * 100.0))
 		"attack_speed":
-			return "+%d %% cadence" % int(round(amount * 100.0))
+			return "+%d %% cadence" % int(round(value * 100.0))
 		"move_speed":
-			return "+%d %% vitesse" % int(round(amount * 100.0))
+			return "+%d %% vitesse" % int(round(value * 100.0))
 		"crit_chance":
-			return "+%d %% critique" % int(round(amount * 100.0))
+			return "+%d %% critique" % int(round(value * 100.0))
 		"range":
-			return "+%d %% portée" % int(round(amount * 100.0))
-	return description
+			return "+%d %% portée" % int(round(value * 100.0))
+	return fallback
+
+
+## Effect of the passive formatted for the HUD, or an empty string when the
+## piece carries none. [param rage_hp_threshold] is the run's configured health
+## fraction, so the sentence matches what Stats actually applies.
+func passive_text(rage_hp_threshold: float = 0.5) -> String:
+	match passive_id:
+		&"rage":
+			return Loc.format(
+				"equipment.passive_rage",
+				"Rage : +%d %% dégâts sous %d %% PV",
+				[
+					int(round(passive_value * 100.0)),
+					int(round(rage_hp_threshold * 100.0)),
+				]
+			)
+		&"level_up_heal":
+			return Loc.format(
+				"equipment.passive_level_heal",
+				"Soin : +%d PV par niveau",
+				[int(round(passive_value))]
+			)
+	return ""

@@ -11,3 +11,4 @@ rarity = "epique"
 stat = "max_hp"
 amount = 45.0
 description = "+45 points de vie"
+set_id = "colosse"

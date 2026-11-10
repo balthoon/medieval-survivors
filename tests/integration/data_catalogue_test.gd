@@ -236,3 +236,98 @@ func test_equipment_lookup_finds_the_stable_id() -> void:
 			"lookup returns the casque de fer"
 		).is_equal("casque_fer")
 	assert_object(missing).override_failure_message("unknown id returns null").is_null()
+
+
+func test_catalogue_registers_the_three_sets_with_their_design_values() -> void:
+	# Arrange
+	var catalogue := _load_catalogue()
+	assert_object(catalogue).is_not_null()
+	if catalogue == null:
+		return
+
+	# Act / Assert — the values the lot 3 design locked: a set is worth roughly
+	# two pieces of its own stat, and every set needs exactly two pieces.
+	assert_int(catalogue.sets.size()).override_failure_message(
+		"3 equipment sets"
+	).is_equal(3)
+	var expected := {
+		"duelliste": ["crit_chance", 0.12],
+		"colosse": ["max_hp", 30.0],
+		"coureur_des_bois": ["attack_speed", 0.1],
+	}
+	var seen := {}
+	for set_data in catalogue.sets:
+		assert_object(set_data).override_failure_message(
+			"every set entry is assigned"
+		).is_not_null()
+		if set_data == null:
+			continue
+		assert_bool(seen.has(set_data.id)).override_failure_message(
+			"set id '%s' is unique" % set_data.id
+		).is_false()
+		seen[set_data.id] = true
+		assert_int(set_data.required_pieces).override_failure_message(
+			"set '%s' is a two-piece set" % set_data.id
+		).is_equal(2)
+		assert_bool(expected.has(set_data.id)).override_failure_message(
+			"set '%s' is one of the designed sets" % set_data.id
+		).is_true()
+		if not expected.has(set_data.id):
+			continue
+		assert_str(set_data.stat).override_failure_message(
+			"set '%s' grants %s" % [set_data.id, expected[set_data.id][0]]
+		).is_equal(expected[set_data.id][0])
+		assert_float(set_data.amount).override_failure_message(
+			"set '%s' grants %s" % [set_data.id, str(expected[set_data.id][1])]
+		).is_equal_approx(float(expected[set_data.id][1]), 0.0001)
+
+
+func test_every_set_id_names_a_registered_set_with_enough_pieces() -> void:
+	# Arrange
+	var catalogue := _load_catalogue()
+	assert_object(catalogue).is_not_null()
+	if catalogue == null:
+		return
+	var pieces_by_set := {}
+
+	# Act
+	for item in catalogue.equipment:
+		if item == null or item.set_id.is_empty():
+			continue
+		var set_data := catalogue.set_by_id(item.set_id)
+		assert_object(set_data).override_failure_message(
+			"piece '%s' names registered set '%s'" % [item.id, item.set_id]
+		).is_not_null()
+		pieces_by_set[item.set_id] = int(pieces_by_set.get(item.set_id, 0)) + 1
+
+	# Assert — no set can ship without the pieces that complete it, and no piece
+	# points at a set the catalogue does not carry.
+	for set_data in catalogue.sets:
+		if set_data == null:
+			continue
+		assert_int(int(pieces_by_set.get(set_data.id, 0))).override_failure_message(
+			"set '%s' has at least %d pieces in the catalogue"
+			% [set_data.id, set_data.required_pieces]
+		).is_greater_equal(set_data.required_pieces)
+
+
+func test_the_two_rare_passives_are_carried_by_their_designed_pieces() -> void:
+	# Arrange
+	var catalogue := _load_catalogue()
+	assert_object(catalogue).is_not_null()
+	if catalogue == null:
+		return
+
+	# Act
+	var ring := catalogue.equipment_by_id("anneau_rubis")
+	var amulet := catalogue.equipment_by_id("amulette_sang")
+
+	# Assert — the passives live on the two pieces that had no set otherwise.
+	assert_object(ring).is_not_null()
+	assert_object(amulet).is_not_null()
+	if ring == null or amulet == null:
+		return
+	assert_str(String(ring.passive_id)).is_equal("rage")
+	assert_float(ring.passive_value).is_equal_approx(0.15, 0.0001)
+	assert_str(String(amulet.passive_id)).is_equal("level_up_heal")
+	assert_float(amulet.passive_value).is_equal_approx(8.0, 0.0001)

@@ -192,6 +192,12 @@ func _process(delta: float) -> void:
 	if is_paused:
 		return
 
+	# The rage passive reads the health fraction when a hit resolves. Refreshing
+	# it here keeps it at most one frame stale, and the level-up panel's pause
+	# freezes it along with the rest of the run.
+	if _player.stats != null:
+		_player.stats.hp_ratio = _player.hp / maxf(_player.stats.max_hp, 0.001)
+
 	var move_dir := _read_move_dir()
 	var before := _player.position
 	_player.step_movement(move_dir, delta)
@@ -280,10 +286,28 @@ func _recompute_stats() -> void:
 		return
 	var derived := _base_stats.clone()
 	_inventory.apply_to(derived)
+	# Sets and passives ride on top of the pieces. The derived stats are rebuilt
+	# from the base on every equipment change, so a set that stays complete is
+	# applied once per rebuild, never accumulated.
+	_apply_set_bonuses(derived)
+	derived.rage_bonus = _inventory.passive_total(&"rage")
+	derived.rage_hp_threshold = _config.rage_hp_threshold
+	derived.level_up_heal = _inventory.passive_total(&"level_up_heal")
+	derived.hp_ratio = _player.hp / maxf(derived.max_hp, 0.001)
 	_player.stats = derived
 	_player.hp = minf(_player.hp, derived.max_hp)
 	if _weapon_system != null:
 		_weapon_system.stats = derived
+
+
+## Applies the bonus of every set [member Inventory] reports complete. A set
+## whose id no piece names, or whose pieces are not all worn, grants nothing.
+func _apply_set_bonuses(stats: Stats) -> void:
+	if stats == null or catalogue == null:
+		return
+	for set_data in catalogue.sets:
+		if _inventory.is_set_complete(set_data):
+			stats.apply_set_bonus(set_data)
 
 
 func _update_contact_damage(delta: float) -> void:
@@ -371,15 +395,26 @@ func _check_level_up() -> void:
 	_xp -= _xp_needed
 	_level += 1
 	_xp_needed = xp_to_next(_level)
+	# The level-up heal lands before the panel opens, so the HUD behind it
+	# already shows the restored bar. The amount restored is measured, not the
+	# nominal value: at full health the panel says +0, never +8.
+	var healed := 0.0
+	var shows_heal := _player.stats != null and _player.stats.level_up_heal > 0.0
+	if shows_heal:
+		var before_heal := _player.hp
+		_player.heal(_player.stats.level_up_heal)
+		healed = _player.hp - before_heal
 	if _level in _config.reroll_levels:
 		_rerolls += 1
-	_offer_choices(choices)
+	_offer_choices(choices, healed, shows_heal)
 
 
 ## Presents the level-up choices already built by [method _build_offers]. The
 ## caller consumes the level only once choices exist, so this method never has
-## to reject an empty panel.
-func _offer_choices(choices: Array[Offer]) -> void:
+## to reject an empty panel. [param healed] is the health the level-up passive
+## actually restored and [param shows_heal] says whether the player carries that
+## passive at all, so the title can report +0 instead of hiding the heal.
+func _offer_choices(choices: Array[Offer], healed: float = 0.0, shows_heal: bool = false) -> void:
 	_pending_choices = choices
 	_boss_loot_open = false
 	is_paused = true
@@ -388,7 +423,9 @@ func _offer_choices(choices: Array[Offer]) -> void:
 		add_child(RingBurst.create(_player.position, _config.level_up_color))
 	if _sfx != null:
 		_sfx.play("level_up", -2.0)
-	_hud.show_upgrade_choices(choices, _rerolls)
+	_hud.show_upgrade_choices(
+		choices, _rerolls, _hud.level_up_title(int(round(healed)), shows_heal)
+	)
 	_refresh_hud()
 
 
@@ -553,10 +590,46 @@ func _decorate_offer(offer: Offer) -> void:
 			if item == null:
 				return
 			var text := item.effect_text()
+			var passive := item.passive_text(_config.rage_hp_threshold)
+			if not passive.is_empty():
+				text += " · " + passive
+			var set_line := _set_line_for(item)
+			if not set_line.is_empty():
+				text += " · " + set_line
 			var current := _inventory.item_in_slot(item.slot)
 			if current != null:
 				text += " · remplace %s (%s)" % [current.display_name, current.effect_text()]
 			offer.description = text
+
+
+## Set line shown on an equipment offer: the set's name and how many pieces the
+## player would wear after taking it, or the bonus when that completes the set.
+## Empty when the piece belongs to no set the catalogue knows, so a stray set_id
+## never prints a bare id.
+func _set_line_for(item: EquipmentData) -> String:
+	if item == null or item.set_id.is_empty() or catalogue == null:
+		return ""
+	var set_data := catalogue.set_by_id(item.set_id)
+	if set_data == null:
+		return ""
+	var worn := _inventory.count_set_pieces(set_data.id)
+	var current := _inventory.item_in_slot(item.slot)
+	# The offer replaces what sits in the slot: it only adds a piece when the
+	# piece it displaces does not already belong to the same set.
+	var after := worn
+	if current == null or current.set_id != set_data.id:
+		after += 1
+	if after >= maxi(set_data.required_pieces, 1):
+		return Loc.format(
+			"equipment.set_complete",
+			"Ensemble %s complet : %s",
+			[set_data.display_name, set_data.bonus_text()]
+		)
+	return Loc.format(
+		"equipment.set_progress",
+		"Ensemble %s (%d/%d)",
+		[set_data.display_name, after, set_data.required_pieces]
+	)
 
 
 ## Rewrites [param offer]'s description with the weapon's pitch and the numbers
@@ -952,9 +1025,55 @@ func _refresh_hud() -> void:
 	_hud.update_weapons(
 		_inventory.weapons, _weapon_levels(), _weapon_cooldown_ratios(), _weapon_cooldown_seconds()
 	)
-	_hud.update_equipment(_inventory)
+	_hud.update_equipment(
+		_inventory,
+		_completed_set_ids(),
+		_config.rage_hp_threshold,
+		_rage_active(),
+		_set_summary_text()
+	)
 	if _boss != null and is_instance_valid(_boss) and _boss.hp > 0.0:
 		_hud.update_boss(_boss.hp, _boss.max_hp)
+
+
+## Ids of every set whose bonus is currently active, consumed by the HUD marker.
+func _completed_set_ids() -> PackedStringArray:
+	var ids := PackedStringArray()
+	if catalogue == null:
+		return ids
+	for set_data in catalogue.sets:
+		if _inventory.is_set_complete(set_data):
+			ids.append(set_data.id)
+	return ids
+
+
+## True while the rage passive is raising weapon damage, that is below its
+## health threshold. Read by the HUD, which shows the state with a word rather
+## than with colour alone.
+func _rage_active() -> bool:
+	return _player.stats != null and _player.stats.rage_multiplier() > 1.0
+
+
+## Progress of every set the player has at least one piece of, in catalogue
+## order: "◆ Colosse 2/2 · Coureur des bois 1/2". Empty when nothing worn belongs
+## to a set, and complete sets carry the same ◆ as the equipment rows.
+func _set_summary_text() -> String:
+	if catalogue == null:
+		return ""
+	var parts := PackedStringArray()
+	for set_data in catalogue.sets:
+		var worn := _inventory.count_set_pieces(set_data.id)
+		if worn <= 0:
+			continue
+		var part := "%s %d/%d" % [
+			set_data.display_name, worn, maxi(set_data.required_pieces, 1)
+		]
+		if _inventory.is_set_complete(set_data):
+			part = "◆ " + part
+		parts.append(part)
+	if parts.is_empty():
+		return ""
+	return Loc.format("equipment.set_summary", "Ensembles : %s", [" · ".join(parts)])
 
 
 ## Level of every carried weapon, in inventory order, consumed by the HUD.

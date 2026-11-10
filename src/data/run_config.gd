@@ -25,6 +25,9 @@ extends Resource
 @export var weapon_upgrade_weight: float = 1.4
 ## Relative weight of a common piece of equipment against a stat or weapon choice.
 @export var equipment_offer_weight: float = 0.9
+## Health fraction below which the rage passive grants its damage bonus. One
+## value for the whole run, so every rage piece behaves the same.
+@export var rage_hp_threshold: float = 0.5
 ## Rerolls the player starts the run with.
 @export var reroll_base: int = 2
 ## Levels that grant one extra reroll.

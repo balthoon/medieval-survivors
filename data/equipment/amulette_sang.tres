@@ -11,3 +11,5 @@ rarity = "mythique"
 stat = "max_hp"
 amount = 60.0
 description = "+60 points de vie"
+passive_id = &"level_up_heal"
+passive_value = 8.0

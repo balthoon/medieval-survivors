@@ -11,3 +11,4 @@ rarity = "rare"
 stat = "move_speed"
 amount = 0.16
 description = "+16 % de vitesse de déplacement"
+set_id = "coureur_des_bois"

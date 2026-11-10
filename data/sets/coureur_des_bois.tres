@@ -1,0 +1,12 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://src/data/equipment_set_data.gd" id="1_script"]
+
+[resource]
+script = ExtResource("1_script")
+id = "coureur_des_bois"
+display_name = "Coureur des bois"
+required_pieces = 2
+stat = "attack_speed"
+amount = 0.1
+description = "Bottes du vent et Anneau d'argent : +10 % de vitesse d'attaque."

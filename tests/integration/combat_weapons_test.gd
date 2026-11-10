@@ -98,9 +98,10 @@ func test_equipment_stats_add_without_double_counting() -> void:
 	var hp_after_replacement: float = player.stats.max_hp
 	var crit_after_replacement: float = player.stats.crit_chance_bonus
 
-	# Assert
+	# Assert — the mail chest completes Colosse, so it adds its own +45 HP and
+	# the set's +30 on top of the iron helmet's +15.
 	_assert_close("casque de fer +15 hp", hp_after_helmet, base_hp + 15.0)
-	_assert_close("cotte de mailles +45 hp", hp_after_chest, base_hp + 60.0)
+	_assert_close("cotte + Colosse = +75 hp", hp_after_chest, base_hp + 90.0)
 	_assert_close(
 		"replacing the helmet does not double count", hp_after_replacement, base_hp + 45.0
 	)

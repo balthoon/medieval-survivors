@@ -29,6 +29,7 @@ Medieval Survivors is a 20-minute survivor-like: ten 20-second waves in a single
 | 10 | UI / HUD (HUD de run, level-up, boutique, écrans de fin) | UI | MVP | Implemented | — (specs à écrire, W4-E3 / W6-E2) | Classes, Économie de run, Audio, Localisation |
 | 11 | Localisation (clés, CSV, repli fr, extraction) | Meta | Full Vision | In Design | docs/localization-standard.md | — (standard transversal) |
 | 12 | Méta-progression (record, déblocages, choix de départ) | Persistence | Full Vision | Not Started | design/gdd/meta-progression.md | Économie de run, Progression de run, Localisation |
+| 13 | Équipement (pièces, passifs, ensembles) | Gameplay | MVP | In Design | design/gdd/equipment.md | Socle de contenu, Progression de run, Combat et armes, Classes |
 
 **Notes de lecture.**
 

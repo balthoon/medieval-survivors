@@ -11,5 +11,12 @@ offer.weapon_upgrade,↑ %s +1 (niv. %d),↑ %s +1 (lvl %d)
 offer.weapon_levels,niv. %d → %d,lvl %d → %d
 offer.weapon_numbers,%d dégâts · %.1f att/s · %.0f DPS · portée %.0f px,%d damage · %.1f atk/s · %.0f DPS · range %.0f px
 offer.weapon_numbers_orbit,%d dégâts · %.1f contact/s par ennemi · %.1f DPS/ennemi · rayon %.0f px,%d damage · %.1f hit/s per enemy · %.1f DPS/enemy · radius %.0f px
+equipment.passive_rage,Rage : +%d %% dégâts sous %d %% PV,Rage: +%d%% damage below %d%% HP
+equipment.passive_level_heal,Soin : +%d PV par niveau,Heal: +%d HP per level
+equipment.set_progress,Ensemble %s (%d/%d),Set %s (%d/%d)
+equipment.set_complete,Ensemble %s complet : %s,Set %s complete: %s
+equipment.set_summary,Ensembles : %s,Sets: %s
+equipment.rage_active,ACTIF,ACTIVE
+hud.level_up_heal_title,Montée de niveau · Soin +%d PV,Level up · Heal +%d HP
 end.victory.title,Victoire !,Victory!
 end.defeat.title,Mort au combat,Slain in battle

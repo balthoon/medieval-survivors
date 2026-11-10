@@ -36,7 +36,7 @@ supprimés. Correspondance :
 | `verify_slice04.gd` (règles) | `integration/boss_rules_test.gd` | 10 | câblage boss ; cadence toutes les 5 vagues ; paliers de scaling ; télégraphe ; portée du slam ; résistance au recul ; spawner qui ignore le boss ; finish line ; pas de doublon de slot ; plafond d'offres d'armes |
 | `verify_slice04.gd` (combat) | `integration/boss_fight_test.gd` | 3 | apparition d'un unique boss palier 0 + barre ; dégâts du slam dans le rayon seulement ; mort du boss → butin |
 | — | `integration/main_scene_bootstrap_test.gd` | 1 | la scène principale expose `Player` et `EnemyManager` |
-| — | `integration/data_catalogue_test.gd` | 9 | `data/catalogue.tres` énumère tout le contenu (3 ennemis, 1 boss, 10 armes, équipement, améliorations, vagues, classe) et le charge ; chaque arme a un id unique et un `mechanic` connu |
+| — | `integration/data_catalogue_test.gd` | 12 | `data/catalogue.tres` énumère tout le contenu (3 ennemis, 1 boss, 10 armes, équipement, améliorations, vagues, classe) et le charge ; chaque arme a un id unique et un `mechanic` connu ; les 3 ensembles et leurs valeurs design ; chaque `set_id` nomme un ensemble enregistré qui a assez de pièces ; les passifs rage/soin sont portés par leurs pièces |
 | — | `integration/spawner_unlock_test.gd` | 7 | les déverrouillages pointent sur `EnemyData.id`, jamais sur `display_name` ; renommer l'un ne déverrouille pas l'autre |
 | — | `integration/weapon_mechanics_test.gd` | 13 | les dix mécaniques W2-E2 : bonus de portée de l'arc, falloff de l'arbalète, projectile perforant vs simple, refund d'exécution, chaîne, tour complet de la faux, vol de vie (normal et refusé sur élite), orbe une fois par tour, mèche de l'encensoir, stagger (immunité des élites), description d'offre nommant la mécanique |
 | — | `unit/harness_bootstrap_test.gd` | 1 | le harnais lui-même : découverte, assertion, code de sortie |
@@ -51,8 +51,10 @@ supprimés. Correspondance :
 | — | `integration/offer_pool_test.gd` | 4 | le pool ne propose jamais une stat au plafond (crit) ni un équipement au plafond ; un pool entièrement vide se replie sur une amélioration ; un niveau sans aucune offre applicable n'est pas consommé |
 | — | `unit/weapon_levels_test.gd` | 12 | lot 1 : pas additif sur la base (niv. 4 = ×1,75, pas ×1,25³) et avant les multiplicateurs globaux ; cadence +5 % par niveau ; portée et rayon d'orbe ; niveau < 1 lu comme 1 ; plafond à `max_level` ; refus si l'arme n'est pas portée ; arme neuve au niveau 1 ; remplacement et nouvelle run repartent au niveau 1 ; `DamageCalc.roll` utilise le niveau demandé et vaut 1 par défaut |
 | — | `integration/weapon_upgrade_offers_test.gd` | 9 | lot 1 : une seule ligne d'arme par panneau (acquisition ou niveau, jamais les deux) ; le niveau vise le suivant et affiche les nombres effectifs à ce niveau ; la ligne de nombres suit la locale active (français ou anglais, jamais les deux) ; une arme au max n'est jamais offerte ; le niveau choisi ne remet pas le cooldown à zéro ; une arme neuve entre au niveau 1 ; le poids de niveau vient de `RunConfig` et le butin de boss le remplace |
+| — | `unit/equipment_identity_test.gd` | 11 | lot 3 : rage inactive au seuil et au-dessus, ×1,15 en dessous, composée avec le multiplicateur global ; bonus d'ensemble additif avec les pièces et critique toujours plafonné ; comptage des pièces portées, complétion selon `required_pieces`, somme des passifs ; texte de passif vide sans passif, texte d'ensemble formaté |
+| — | `integration/equipment_bonuses_test.gd` | 10 | lot 3 dans la vraie run : Duelliste +12 % crit appliqué une seule fois malgré deux recalculs ; remplacer une pièce retire le bonus ; le casque de fer casse Duelliste et permet Colosse ; Rage ×1,15 sous 50 % PV ; amulette rend 8 PV à la montée et le titre du panneau indique le montant réel (+0 à PV pleins) ; l'offre nomme le passif et la ligne d'ensemble (progression puis bonus) ; le HUD affiche la progression des ensembles et le mot d'état de la rage |
 
-**Total : 141 tests, 21 suites.**
+**Total : 165 tests, 23 suites.**
 
 ## Conventions
 

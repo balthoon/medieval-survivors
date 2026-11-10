@@ -11,3 +11,4 @@ rarity = "commun"
 stat = "max_hp"
 amount = 15.0
 description = "+15 points de vie"
+set_id = "colosse"

@@ -15,6 +15,9 @@ extends Resource
 @export var weapons: Array[WeaponData] = []
 ## Equipment offered on level up.
 @export var equipment: Array[EquipmentData] = []
+## Equipment sets. A piece points at one through its [member EquipmentData.set_id];
+## a set whose id no piece names simply never completes.
+@export var sets: Array[EquipmentSetData] = []
 ## Stat upgrades offered on level up.
 @export var upgrades: Array[UpgradeData] = []
 ## Last-resort level-up offer, used when every normal candidate is filtered out.
@@ -53,4 +56,13 @@ func equipment_by_id(id: String) -> EquipmentData:
 	for item in equipment:
 		if item != null and item.id == id:
 			return item
+	return null
+
+
+## Equipment set whose stable [member EquipmentSetData.id] is [param id], or
+## null when the catalogue holds no such set.
+func set_by_id(id: String) -> EquipmentSetData:
+	for set_data in sets:
+		if set_data != null and set_data.id == id:
+			return set_data
 	return null

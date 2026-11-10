@@ -123,3 +123,37 @@ func apply_to(stats: Stats) -> void:
 		return
 	for slot in SLOTS:
 		stats.apply_equipment(item_in_slot(slot))
+
+
+## Number of worn pieces whose [member EquipmentData.set_id] is [param set_id].
+## An empty id counts nothing, so an unaffiliated piece never completes a set.
+func count_set_pieces(set_id: String) -> int:
+	if set_id.is_empty():
+		return 0
+	var count := 0
+	for slot in SLOTS:
+		var item: EquipmentData = equipment.get(slot, null)
+		if item != null and item.set_id == set_id:
+			count += 1
+	return count
+
+
+## True when enough pieces of [param set_data] are worn for its bonus. A null
+## set is never complete.
+func is_set_complete(set_data: EquipmentSetData) -> bool:
+	if set_data == null:
+		return false
+	return count_set_pieces(set_data.id) >= maxi(set_data.required_pieces, 1)
+
+
+## Total magnitude of [param passive_id] across every worn piece. Two pieces
+## carrying the same passive add up; an empty id sums to zero.
+func passive_total(passive_id: StringName) -> float:
+	if passive_id == &"":
+		return 0.0
+	var total := 0.0
+	for slot in SLOTS:
+		var item: EquipmentData = equipment.get(slot, null)
+		if item != null and item.passive_id == passive_id:
+			total += item.passive_value
+	return total
